@@ -1,0 +1,3 @@
+[submodule "coin-exchange"]
+	path = coin-exchange
+	url = git@github.com:sudachen/coin-exchange
