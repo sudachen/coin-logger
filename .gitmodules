@@ -1,3 +1,6 @@
 [submodule "coin-exchange"]
 	path = coin-exchange
 	url = git@github.com:sudachen/coin-exchange
+[submodule "src/github.com/sudachen/coin-exchange"]
+	path = src/github.com/sudachen/coin-exchange
+	url = git@github.com:sudachen/coin-exchange
