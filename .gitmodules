@@ -4,3 +4,6 @@
 [submodule "src/github.com/sudachen/coin-exchange"]
 	path = src/github.com/sudachen/coin-exchange
 	url = git@github.com:sudachen/coin-exchange
+[submodule ".deps/coin-exchange"]
+	path = .deps/coin-exchange
+	url = git@github.com:sudachen/coin-exchange
