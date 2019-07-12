@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/sudachen/coin-exchange/exchange"
 	"github.com/sudachen/coin-exchange/exchange/apifactory"
 	"github.com/sudachen/coin-logger/internal"
@@ -32,9 +31,20 @@ func main() {
 		}
 	}
 
-	fmt.Println("waiting for messages")
+	if err := internal.StartWriter(cfg); err != nil {
+		internal.Fail(err.Error())
+	}
 
-	for e := range exchange.Collector.MsgStream {
-		fmt.Printf("%#v\n", e)
+	err = internal.WaitForCtrlC()
+
+	for _, ex := range cfg.Exchanges {
+		api := apifactory.Get(ex)
+		_ = api.UnsubscribeAll()
+	}
+
+	internal.StopWriter()
+
+	if err != nil {
+		internal.Fail(err.Error())
 	}
 }

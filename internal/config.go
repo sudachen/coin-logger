@@ -15,6 +15,8 @@ type S3 struct {
 	Prefix string `yaml:"prefix"`
 	Key    string `yaml:"key"`
 	Secret string `yaml:"secret"`
+	Cache  string `yaml:"cache"`
+	Hours  int32  `yaml:"hours"`
 }
 
 type Config struct {
