@@ -3,20 +3,34 @@ package main
 import (
 	"fmt"
 	"github.com/sudachen/coin-exchange/exchange"
-	"github.com/sudachen/coin-exchange/exchange/binance"
+	"github.com/sudachen/coin-exchange/exchange/apifactory"
+	"github.com/sudachen/coin-logger/internal"
 )
+
+var channels = []exchange.Channel{exchange.Trade, exchange.Candlestick}
 
 func main() {
 
-	_ = binance.Websocket(
-		exchange.CoinPair{exchange.BTC,exchange.USD},
-		exchange.Candlestick).
-		Subscribe()
+	cfg, err := internal.LoadConfig("")
+	if err != nil {
+		internal.Fail("failed to read config: %v\n", err)
+	}
 
-	_ = binance.Websocket(
-		exchange.CoinPair{exchange.BTC,exchange.USD},
-		exchange.Trade).
-		Subscribe()
+	for _, ex := range cfg.Exchanges {
+		api := apifactory.Get(ex)
+
+		for _, c := range channels {
+			pairs := api.FilterSupported(cfg.Pairs)
+			if err := api.SubscribeCombined(pairs, c); err != nil {
+				for _, pair := range cfg.Pairs {
+					if err := api.Subscribe(pair, c); err != nil {
+						internal.Fail("failed to subscribe pair %v/%v for %v: %v",
+							pair[0], pair[1], ex, err)
+					}
+				}
+			}
+		}
+	}
 
 	fmt.Println("waiting for messages")
 
