@@ -12,10 +12,9 @@ func WaitForCtrlC() error {
 	signal_channel = make(chan os.Signal, 1)
 	signal.Notify(signal_channel, os.Interrupt)
 	select {
-	case err:= <- errChannel:
+	case err := <-errChannel:
 		return err
 	case <-signal_channel:
 		return nil
 	}
 }
-

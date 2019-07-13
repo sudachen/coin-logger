@@ -17,17 +17,17 @@ var cacheDirname string
 var waitGroup sync.WaitGroup
 
 type channelDef struct {
-	pfx string
-	df interface{}
-	cx chan interface{}
+	pfx   string
+	df    interface{}
+	cx    chan interface{}
 	close chan struct{}
 }
 
-type parq struct{
-	name 		string
-	startedAt 	time.Time
-	source 		source.ParquetFile
-	writer 		*writer.ParquetWriter
+type parq struct {
+	name      string
+	startedAt time.Time
+	source    source.ParquetFile
+	writer    *writer.ParquetWriter
 }
 
 var channels = map[exchange.Channel]*channelDef{
@@ -46,44 +46,44 @@ var channels = map[exchange.Channel]*channelDef{
 }
 
 type tradeRecord struct {
-	Origin 			string 		`parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin1  			string 		`parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin2  			string 		`parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	TradeId	 		int64		`parquet:"name=trade_id, type=INT64"`
-	Price   		float32		`parquet:"name=price, type=FLOAT"`
-	Qty     		float32		`parquet:"name=qty, type=FLOAT"`
-	BuyerOrderId   	int64		`parquet:"name=bayer_order_id, type=INT64"`
-	SellerOrderId  	int64		`parquet:"name=seller_order_id, type=INT64"`
-	TradeOrderTime 	int64		`parquet:"name=trader_time, type=TIMESTAMP_MICROS"`
+	Origin         string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1          string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2          string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	TradeId        int64   `parquet:"name=trade_id, type=INT64"`
+	Price          float32 `parquet:"name=price, type=FLOAT"`
+	Qty            float32 `parquet:"name=qty, type=FLOAT"`
+	BuyerOrderId   int64   `parquet:"name=bayer_order_id, type=INT64"`
+	SellerOrderId  int64   `parquet:"name=seller_order_id, type=INT64"`
+	TradeOrderTime int64   `parquet:"name=trader_time, type=TIMESTAMP_MICROS"`
 }
 
 type candleRecord struct {
-	Origin 			string 		`parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin1  			string 		`parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin2  			string 		`parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	StartTime 		int64		`parquet:"name=start_time, type=TIMESTAMP_MICROS"`
-	EndTime 		int64		`parquet:"name=end_time, type=TIMESTAMP_MICROS"`
-	Interval  		int32		`parquet:"name=interval, type=INT32"`
-	TradeNum  		int32		`parquet:"name=tradenum, type=INT32"`
-	FirstTradeId 	int64		`parquet:"name=first_trade_id, type=INT64"`
-	LastTradeId  	int64		`parquet:"name=last_trade_id, type=INT64"`
-	Open   			float32     `parquet:"name=open, type=FLOAT"`
-	Close  			float32		`parquet:"name=close, type=FLOAT"`
-	High   			float32		`parquet:"name=high, type=FLOAT"`
-	Low    			float32		`parquet:"name=low, type=FLOAT"`
-	Volume 			float32		`parquet:"name=volume, type=FLOAT"`
+	Origin       string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1        string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2        string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	StartTime    int64   `parquet:"name=start_time, type=TIMESTAMP_MICROS"`
+	EndTime      int64   `parquet:"name=end_time, type=TIMESTAMP_MICROS"`
+	Interval     int32   `parquet:"name=interval, type=INT32"`
+	TradeNum     int32   `parquet:"name=tradenum, type=INT32"`
+	FirstTradeId int64   `parquet:"name=first_trade_id, type=INT64"`
+	LastTradeId  int64   `parquet:"name=last_trade_id, type=INT64"`
+	Open         float32 `parquet:"name=open, type=FLOAT"`
+	Close        float32 `parquet:"name=close, type=FLOAT"`
+	High         float32 `parquet:"name=high, type=FLOAT"`
+	Low          float32 `parquet:"name=low, type=FLOAT"`
+	Volume       float32 `parquet:"name=volume, type=FLOAT"`
 }
 
-func cacheDir(cfg *Config) (*string, error){
+func cacheDir(cfg *Config) (*string, error) {
 	dirname := cfg.S3.Cache
-	if dir1,_ := path.Split(dirname); dir1 == "" {
+	if dir1, _ := path.Split(dirname); dir1 == "" {
 		s3cache, ok := os.LookupEnv("S3_CACHE")
 		if ok {
-			dirname = path.Join(s3cache,dirname)
+			dirname = path.Join(s3cache, dirname)
 		}
 	}
 	if st, err := os.Stat(dirname); err != nil {
-		if err = os.MkdirAll(dirname,0700); err != nil {
+		if err = os.MkdirAll(dirname, 0700); err != nil {
 			return nil, fmt.Errorf("can't create cache directory %v", dirname)
 		}
 	} else if !st.IsDir() {
@@ -99,7 +99,7 @@ func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
 		utc.Year(), utc.Month(), utc.Day(),
 		utc.Hour(), utc.Minute(), utc.Second())
 	if cacheDirname != "" {
-		f = path.Join(cacheDirname,f)
+		f = path.Join(cacheDirname, f)
 	}
 	return f
 }
@@ -114,16 +114,16 @@ func createOneParquet(channel exchange.Channel, startedAt time.Time, cfg *Config
 			fmt.Println("Can't create parquet writer", err)
 			return nil, err
 		} else {
-			return &parq{ name, startedAt, fw, pw }, nil
+			return &parq{name, startedAt, fw, pw}, nil
 		}
 	}
 }
 
 func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
 	done := false
-	c := make(chan struct{},1)
+	c := make(chan struct{}, 1)
 	channels[channel].close = c
-	parq, err := createOneParquet(channel, startedAt, cfg);
+	parq, err := createOneParquet(channel, startedAt, cfg)
 	if err != nil {
 		Fail(err.Error())
 	} else {
@@ -142,13 +142,13 @@ func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
 		}
 	}
 	if parq != nil {
-		fmt.Fprintf(os.Stderr,"worker for %v exited\n",parq.name)
+		fmt.Fprintf(os.Stderr, "worker for %v exited\n", parq.name)
 	}
 	waitGroup.Done()
 }
 
 func closeStore() {
-	for _,v := range channels{
+	for _, v := range channels {
 		if v.close != nil {
 			v.close <- struct{}{}
 		}
@@ -159,7 +159,7 @@ func closeStore() {
 func openStore(cfg *Config) {
 	closeStore()
 	t := time.Now()
-	for c,_ := range channels{
+	for c, _ := range channels {
 		waitGroup.Add(1)
 		go worker1(c, t, cfg)
 	}
@@ -190,31 +190,31 @@ func Writer(cfg *Config) {
 					Qty:            msg.Qty,
 					BuyerOrderId:   msg.BuyerOrderId,
 					SellerOrderId:  msg.SellerOrderId,
-					TradeOrderTime: msg.TradeOrderTime.UnixNano()/1000,
+					TradeOrderTime: msg.TradeOrderTime.UnixNano() / 1000,
 				}
 			case *message.Candlestick:
 				channels[exchange.Candlestick].cx <- &candleRecord{
-					Origin:         msg.Origin.String(),
-					Coin1:          msg.Pair[0].String(),
-					Coin2:          msg.Pair[1].String(),
-					StartTime:		msg.StartTime.UnixNano()/1000,
-					EndTime: 		msg.EndTime.UnixNano()/1000,
-					Interval: 		msg.Interval,
-					TradeNum:  		msg.TradeNum,
-					FirstTradeId: 	msg.FirstTradeId,
-					LastTradeId:	msg.LastTradeId,
-					Open:			msg.Open,
-					Close:  		msg.Close,
-					High:			msg.High,
-					Low:			msg.Low,
-					Volume:			msg.Volume,
+					Origin:       msg.Origin.String(),
+					Coin1:        msg.Pair[0].String(),
+					Coin2:        msg.Pair[1].String(),
+					StartTime:    msg.StartTime.UnixNano() / 1000,
+					EndTime:      msg.EndTime.UnixNano() / 1000,
+					Interval:     msg.Interval,
+					TradeNum:     msg.TradeNum,
+					FirstTradeId: msg.FirstTradeId,
+					LastTradeId:  msg.LastTradeId,
+					Open:         msg.Open,
+					Close:        msg.Close,
+					High:         msg.High,
+					Low:          msg.Low,
+					Volume:       msg.Volume,
 				}
 			}
 		}
 	}
 }
 
-func StartWriter(cfg *Config) error{
+func StartWriter(cfg *Config) error {
 	if dirname, err := cacheDir(cfg); err != nil {
 		return err
 	} else {
@@ -229,5 +229,5 @@ func StartWriter(cfg *Config) error{
 func StopWriter() {
 	writerClose <- struct{}{}
 	writerDone.Wait()
-	fmt.Fprintf(os.Stderr,"exited\n")
+	fmt.Fprintf(os.Stderr, "exited\n")
 }
