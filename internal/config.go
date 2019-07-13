@@ -11,16 +11,24 @@ import (
 )
 
 type S3 struct {
-	Host   string `yaml:"host"`
-	Prefix string `yaml:"prefix"`
-	Key    string `yaml:"key"`
-	Secret string `yaml:"secret"`
-	Cache  string `yaml:"cache"`
-	Hours  int32  `yaml:"hours"`
+	Endpoint string `yaml:"endpoint"`
+	Region   string `yaml:"region"`
+	Prefix   string `yaml:"prefix"`
+	Bucket   string `yaml:"bucket"`
+	Key      string `yaml:"key"`
+	Secret   string `yaml:"secret"`
+	Cache    string `yaml:"cache"`
+	Times    int32  `yaml:"times"`
+}
+
+type Log struct {
+	Debug 	  bool	 `yaml:"debug"`
+	WriterTo  string `yaml:"writeto"`
 }
 
 type Config struct {
 	S3        S3                  `yaml:"s3"`
+	Log		  Log
 	Pairs     []exchange.CoinPair `yaml:"-"`
 	Exchanges []exchange.Exchange `yaml:"exchanges"`
 }

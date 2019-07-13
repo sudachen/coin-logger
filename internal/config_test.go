@@ -2,8 +2,7 @@ package internal
 
 import (
 	"fmt"
-	"os"
-	"path"
+	"strings"
 	"testing"
 )
 
@@ -32,4 +31,8 @@ func Test1(t *testing.T) {
 		return
 	}
 	fmt.Printf("%#v\n", *cfg)
+}
+
+func Test2(t *testing.T) {
+	fmt.Println(strings.FieldsFunc("a-b-c.d~", func(c rune) bool { return c == '-'}))
 }

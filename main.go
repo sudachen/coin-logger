@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/google/logger"
 	"github.com/sudachen/coin-exchange/exchange"
 	"github.com/sudachen/coin-exchange/exchange/apifactory"
 	"github.com/sudachen/coin-logger/internal"
@@ -15,15 +16,18 @@ func main() {
 		internal.Fail("failed to read config: %v\n", err)
 	}
 
+	defer internal.SetupLogger(cfg).Close()
+
+	logger.Infof("starting...")
+
 	for _, ex := range cfg.Exchanges {
 		api := apifactory.Get(ex)
-
 		for _, c := range channels {
 			pairs := api.FilterSupported(cfg.Pairs)
 			if err := api.SubscribeCombined(pairs, c); err != nil {
 				for _, pair := range cfg.Pairs {
 					if err := api.Subscribe(pair, c); err != nil {
-						internal.Fail("failed to subscribe pair %v/%v for %v: %v",
+						logger.Fatalf("failed to subscribe pair %v/%v for %v: %v",
 							pair[0], pair[1], ex, err)
 					}
 				}
@@ -32,9 +36,10 @@ func main() {
 	}
 
 	if err := internal.StartWriter(cfg); err != nil {
-		internal.Fail(err.Error())
+		logger.Fatal(err.Error())
 	}
 
+	logger.Infof("processing...")
 	err = internal.WaitForCtrlC()
 
 	for _, ex := range cfg.Exchanges {
@@ -42,9 +47,13 @@ func main() {
 		_ = api.UnsubscribeAll()
 	}
 
+	logger.Info("stopping...")
 	internal.StopWriter()
+	internal.WaitForUploads()
 
 	if err != nil {
-		internal.Fail(err.Error())
+		logger.Fatal(err.Error())
 	}
+
+	logger.Info("stopped successful")
 }

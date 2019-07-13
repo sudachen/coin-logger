@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"github.com/google/logger"
 	"github.com/sudachen/coin-exchange/exchange"
 	"github.com/sudachen/coin-exchange/exchange/message"
 	"github.com/xitongsys/parquet-go-source/local"
@@ -32,13 +33,13 @@ type parq struct {
 
 var channels = map[exchange.Channel]*channelDef{
 	exchange.Trade: &channelDef{
-		"trade-history",
+		"trade",
 		&tradeRecord{},
 		make(chan interface{}, 100),
 		nil,
 	},
 	exchange.Candlestick: &channelDef{
-		"candles-history",
+		"candlestick",
 		&candleRecord{},
 		make(chan interface{}, 100),
 		nil,
@@ -107,11 +108,11 @@ func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
 func createOneParquet(channel exchange.Channel, startedAt time.Time, cfg *Config) (*parq, error) {
 	name := fileNameFromChannel(channel, startedAt)
 	if fw, err := local.NewLocalFileWriter(name); err != nil {
-		fmt.Println("Can't create local file", err)
+		logger.Errorf("Can't create local file: %v", err)
 		return nil, err
 	} else {
 		if pw, err := writer.NewParquetWriter(fw, channels[channel].df, 4); err != nil {
-			fmt.Println("Can't create parquet writer", err)
+			logger.Errorf("Can't create parquet writer: %v", err)
 			return nil, err
 		} else {
 			return &parq{name, startedAt, fw, pw}, nil
@@ -125,24 +126,26 @@ func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
 	channels[channel].close = c
 	parq, err := createOneParquet(channel, startedAt, cfg)
 	if err != nil {
-		Fail(err.Error())
+		logger.Fatal(err.Error())
 	} else {
 		for !done {
 			select {
 			case <-c:
 				close(c)
-				_ = parq.writer.WriteStop()
-				_ = parq.source.Close()
+				e1 := parq.writer.WriteStop()
+				if err := parq.source.Close(); err == nil && e1 == nil {
+					Upload(parq.name, cfg)
+				}
 				done = true
 			case r := <-channels[channel].cx:
 				if err := parq.writer.Write(r); err != nil {
-					Fail(err.Error())
+					logger.Fatal(err.Error())
 				}
 			}
 		}
 	}
 	if parq != nil {
-		fmt.Fprintf(os.Stderr, "worker for %v exited\n", parq.name)
+		logger.Infof("worker for %v exited\n", parq.name)
 	}
 	waitGroup.Done()
 }
@@ -165,14 +168,37 @@ func openStore(cfg *Config) {
 	}
 }
 
+func reopenStore(cfg *Config) {
+	for _, v := range channels {
+		if v.close != nil {
+			v.close <- struct{}{}
+		}
+	}
+	t := time.Now()
+	for c, _ := range channels {
+		waitGroup.Add(1)
+		go worker1(c, t, cfg)
+	}
+}
+
 var writerClose chan struct{}
 var writerDone sync.WaitGroup
 
 func Writer(cfg *Config) {
+	var ticker *time.Ticker
+	if times := cfg.S3.Times; times != 0 {
+		ticker = time.NewTicker(time.Duration(times) * time.Minute)
+	} else {
+		ticker = time.NewTicker(8 * time.Hour)
+	}
+	defer ticker.Stop()
+
 	writerClose = make(chan struct{})
 	openStore(cfg)
 	for {
 		select {
+		case <-ticker.C:
+			reopenStore(cfg)
 		case <-writerClose:
 			closeStore()
 			close(writerClose)
@@ -228,6 +254,7 @@ func StartWriter(cfg *Config) error {
 
 func StopWriter() {
 	writerClose <- struct{}{}
+	logger.Info("waiting for writers\n")
 	writerDone.Wait()
-	fmt.Fprintf(os.Stderr, "exited\n")
+	logger.Info("all writers finished\n")
 }
