@@ -10,6 +10,10 @@ push: build dock
 
 restart: push
 	cd infra && make coin-logger.Restart
-	
-	
+
+up:
+	cd infra && make coin-logger.Up
+
+down:
+	cd infra && make coin-logger.Down
 
