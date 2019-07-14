@@ -4,6 +4,7 @@ import (
 	"github.com/google/logger"
 	"io"
 	"os"
+	"path"
 )
 
 type loggerCloser struct {
@@ -21,7 +22,12 @@ func (c *loggerCloser) Close() {
 func SetupLogger(cfg *Config) *loggerCloser{
 	var err error
 	var logio io.Writer = os.Stderr;
+
 	if cfg.Log.WriterTo != "" {
+		logdir := path.Dir(cfg.Log.WriterTo)
+		if logdir != "" && logdir != "." && logdir != ".." {
+			_ = os.MkdirAll(logdir, 0700)
+		}
 		logio, err = os.OpenFile(cfg.Log.WriterTo, os.O_CREATE|os.O_WRONLY|os.O_APPEND,0660)
 		if err != nil {
 			logger.Fatalf("Failed to open log file: %v", err)

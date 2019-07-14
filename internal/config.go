@@ -75,7 +75,7 @@ func findConfig(s string) *string {
 			return &s2
 		}
 	}
-	s3 := path.Join("etc", "infra", s)
+	s3 := path.Join("/etc", "infra", s)
 	if _, err := os.Stat(s3); err == nil {
 		return &s3
 	}

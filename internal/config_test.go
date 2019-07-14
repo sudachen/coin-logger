@@ -2,7 +2,7 @@ package internal
 
 import (
 	"fmt"
-	"strings"
+	"path"
 	"testing"
 )
 
@@ -34,5 +34,5 @@ func Test1(t *testing.T) {
 }
 
 func Test2(t *testing.T) {
-	fmt.Println(strings.FieldsFunc("a-b-c.d~", func(c rune) bool { return c == '-'}))
+	fmt.Println(path.Join("a", "b"))
 }

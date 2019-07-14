@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"github.com/google/logger"
 	"github.com/sudachen/coin-exchange/exchange"
 	"github.com/sudachen/coin-exchange/exchange/apifactory"
@@ -11,7 +12,9 @@ var channels = []exchange.Channel{exchange.Trade, exchange.Candlestick}
 
 func main() {
 
-	cfg, err := internal.LoadConfig("")
+	flag.Parse()
+
+	cfg, err := internal.LoadConfig(flag.Arg(0))
 	if err != nil {
 		internal.Fail("failed to read config: %v\n", err)
 	}

@@ -18,14 +18,14 @@ var cacheDirname string
 var waitGroup sync.WaitGroup
 
 type channelDef struct {
-	pfx   string
 	df    interface{}
 	cx    chan interface{}
 	close chan struct{}
 }
 
 type parq struct {
-	name      string
+	tempName  string
+	fileName  string
 	startedAt time.Time
 	source    source.ParquetFile
 	writer    *writer.ParquetWriter
@@ -33,17 +33,20 @@ type parq struct {
 
 var channels = map[exchange.Channel]*channelDef{
 	exchange.Trade: &channelDef{
-		"trade",
 		&tradeRecord{},
 		make(chan interface{}, 100),
 		nil,
 	},
 	exchange.Candlestick: &channelDef{
-		"candlestick",
 		&candleRecord{},
 		make(chan interface{}, 100),
 		nil,
 	},
+}
+
+type Metadata interface {
+	GetOrigin() string
+	GetPair() string
 }
 
 type tradeRecord struct {
@@ -56,6 +59,14 @@ type tradeRecord struct {
 	BuyerOrderId   int64   `parquet:"name=bayer_order_id, type=INT64"`
 	SellerOrderId  int64   `parquet:"name=seller_order_id, type=INT64"`
 	TradeOrderTime int64   `parquet:"name=trader_time, type=TIMESTAMP_MICROS"`
+}
+
+func (c *tradeRecord) GetOrigin() string {
+	return c.Origin
+}
+
+func (c *tradeRecord) GetPair() string {
+	return c.Coin1 + "/" + c.Coin2
 }
 
 type candleRecord struct {
@@ -73,6 +84,14 @@ type candleRecord struct {
 	High         float32 `parquet:"name=high, type=FLOAT"`
 	Low          float32 `parquet:"name=low, type=FLOAT"`
 	Volume       float32 `parquet:"name=volume, type=FLOAT"`
+}
+
+func (c *candleRecord) GetOrigin() string {
+	return c.Origin
+}
+
+func (c *candleRecord) GetPair() string {
+	return c.Coin1 + "/" + c.Coin2
 }
 
 func cacheDir(cfg *Config) (*string, error) {
@@ -93,10 +112,22 @@ func cacheDir(cfg *Config) (*string, error) {
 	return &dirname, nil
 }
 
+func tempNameFromChannel(channel exchange.Channel, t time.Time) string {
+	utc := t.UTC()
+	f := fmt.Sprintf("%s-%04d%02d%02dT%02d%02d%02d.parquet~",
+		S3channelName(channel),
+		utc.Year(), utc.Month(), utc.Day(),
+		utc.Hour(), utc.Minute(), utc.Second())
+	if cacheDirname != "" {
+		f = path.Join(cacheDirname, f)
+	}
+	return f
+}
+
 func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
 	utc := t.UTC()
-	f := fmt.Sprintf("%v-%04d%02d%02dT%02d%02d%02d.parquet",
-		channels[channel].pfx,
+	f := fmt.Sprintf("%s-%04d%02d%02dT%02d%02d%02d.parquet",
+		S3channelName(channel),
 		utc.Year(), utc.Month(), utc.Day(),
 		utc.Hour(), utc.Minute(), utc.Second())
 	if cacheDirname != "" {
@@ -106,8 +137,9 @@ func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
 }
 
 func createOneParquet(channel exchange.Channel, startedAt time.Time, cfg *Config) (*parq, error) {
-	name := fileNameFromChannel(channel, startedAt)
-	if fw, err := local.NewLocalFileWriter(name); err != nil {
+	tempName := tempNameFromChannel(channel, startedAt)
+	fileName := fileNameFromChannel(channel, startedAt)
+	if fw, err := local.NewLocalFileWriter(tempName); err != nil {
 		logger.Errorf("Can't create local file: %v", err)
 		return nil, err
 	} else {
@@ -115,7 +147,7 @@ func createOneParquet(channel exchange.Channel, startedAt time.Time, cfg *Config
 			logger.Errorf("Can't create parquet writer: %v", err)
 			return nil, err
 		} else {
-			return &parq{name, startedAt, fw, pw}, nil
+			return &parq{tempName, fileName, startedAt, fw, pw}, nil
 		}
 	}
 }
@@ -128,16 +160,32 @@ func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
 	if err != nil {
 		logger.Fatal(err.Error())
 	} else {
+		s3t := &S3Tags{
+			Exchanges: make(map[string]bool),
+			Pairs: make(map[string]bool),
+			Channel: channel.String(),
+			StartedAt: startedAt.Unix(),
+		}
 		for !done {
 			select {
 			case <-c:
 				close(c)
+				s3t.EndedAt = time.Now().Unix()
 				e1 := parq.writer.WriteStop()
 				if err := parq.source.Close(); err == nil && e1 == nil {
-					Upload(parq.name, cfg)
+					_ = os.Rename(parq.tempName,parq.fileName);
+					if err := S3tWrite(parq.fileName, s3t); err != nil {
+						logger.Errorf("failed to write metadata: %v", err.Error())
+					} else {
+						Upload(parq.fileName, cfg)
+					}
 				}
 				done = true
 			case r := <-channels[channel].cx:
+				m := r.(Metadata)
+				s3t.Count += 1
+				s3t.Exchanges[m.GetOrigin()] = true
+				s3t.Pairs[m.GetPair()] = true
 				if err := parq.writer.Write(r); err != nil {
 					logger.Fatal(err.Error())
 				}
@@ -145,7 +193,7 @@ func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
 		}
 	}
 	if parq != nil {
-		logger.Infof("worker for %v exited\n", parq.name)
+		logger.Infof("parquet done: %s\n", parq.fileName)
 	}
 	waitGroup.Done()
 }
