@@ -24,7 +24,8 @@ ENV USER=u
 
 USER $USER
 WORKDIR $HOME
-COPY --chown=1000:100 ./coin-logger ./
-VOLUME ["/etc/infra", "/data"]
-CMD ["/home/u/coin-logger", "do-coin-logger"]
+COPY --chown=1000:100 ./coin-logger ./entrypoint.sh ./
+COPY --chown=1000:100 ./entrypoint.sh /
+VOLUME "/data"
+ENTRYPOINT ["/entrypoint.sh"]
 

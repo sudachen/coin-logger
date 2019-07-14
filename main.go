@@ -6,6 +6,7 @@ import (
 	"github.com/sudachen/coin-exchange/exchange"
 	"github.com/sudachen/coin-exchange/exchange/apifactory"
 	"github.com/sudachen/coin-logger/internal"
+	"log"
 )
 
 var channels = []exchange.Channel{exchange.Trade, exchange.Candlestick}
@@ -20,7 +21,7 @@ func main() {
 	}
 
 	defer internal.SetupLogger(cfg).Close()
-
+	logger.SetFlags(log.Ldate|log.Ltime)
 	logger.Infof("starting...")
 
 	for _, ex := range cfg.Exchanges {
@@ -42,7 +43,7 @@ func main() {
 		logger.Fatal(err.Error())
 	}
 
-	logger.Infof("processing...")
+	logger.Infof("started successful.")
 	err = internal.WaitForCtrlC()
 
 	for _, ex := range cfg.Exchanges {

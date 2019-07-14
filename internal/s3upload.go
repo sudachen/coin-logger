@@ -46,15 +46,12 @@ func S3channelName(channel exchange.Channel) string {
 func makeKey(name string, s3t *S3Tags, cfg *Config) string {
 	ext := path.Ext(name)
 	dt := time.Unix(s3t.StartedAt,0).UTC()
-	return fmt.Sprintf("%s%04d/%04d%02d/%s/%04d%02d%02dT%02d%02d%02d%s",
+	return fmt.Sprintf("%s%04d%02d/%s-%04d%02d%02dT%02d%02d%02d%s",
 				cfg.S3.Prefix,
-				dt.Year(),
-				//
 				dt.Year(),
 				dt.Month(),
 				//
 				s3t.Channel,
-				//
 				dt.Year(),
 				dt.Month(),
 				dt.Day(),
@@ -65,11 +62,11 @@ func makeKey(name string, s3t *S3Tags, cfg *Config) string {
 }
 
 func joinKeys(m map[string]bool) string {
-	keys := make([]string, len(m))
-	i := 0
-	for k := range m {
-		keys[i] = k
-		i++
+	keys := make([]string, 0, len(m))
+	for k, b := range m {
+		if b {
+			keys = append(keys,k)
+		}
 	}
 	return strings.Join(keys," ")
 }
