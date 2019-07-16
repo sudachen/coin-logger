@@ -39,7 +39,8 @@ func S3channelName(channel exchange.Channel) string {
 	switch channel {
 	case exchange.Candlestick: return "candlestick"
 	case exchange.Trade: return "trade"
-	default: return fmt.Sprintf("channel%d", channel)
+	case exchange.Depth: return "depth"
+	default: return fmt.Sprintf("channel-%d", channel)
 	}
 }
 

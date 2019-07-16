@@ -6,10 +6,10 @@ import (
 	"github.com/sudachen/coin-exchange/exchange"
 	"github.com/sudachen/coin-exchange/exchange/apifactory"
 	"github.com/sudachen/coin-logger/internal"
-	"log"
 )
 
-var channels = []exchange.Channel{exchange.Trade, exchange.Candlestick}
+//var channels = []exchange.Channel{exchange.Trade, exchange.Candlestick}
+var channels = []exchange.Channel{exchange.Depth}
 
 func main() {
 
@@ -21,21 +21,13 @@ func main() {
 	}
 
 	defer internal.SetupLogger(cfg).Close()
-	logger.SetFlags(log.Ldate|log.Ltime)
+	//logger.SetFlags(log.Ldate|log.Ltime)
 	logger.Infof("starting...")
 
 	for _, ex := range cfg.Exchanges {
 		api := apifactory.Get(ex)
-		for _, c := range channels {
-			pairs := api.FilterSupported(cfg.Pairs)
-			if err := api.SubscribeCombined(pairs, c); err != nil {
-				for _, pair := range cfg.Pairs {
-					if err := api.Subscribe(pair, c); err != nil {
-						logger.Fatalf("failed to subscribe pair %v/%v for %v: %v",
-							pair[0], pair[1], ex, err)
-					}
-				}
-			}
+		if err := api.Subscribe(cfg.Pairs, channels); err != nil {
+			logger.Fatalf("failed to subscribe api %v", ex.String())
 		}
 	}
 

@@ -36,6 +36,6 @@ func SetupLogger(cfg *Config) *loggerCloser{
 
 	return &loggerCloser{
 		logio.(io.Closer),
-		logger.Init("con-logger", cfg.Log.Debug, false, logio),
+		logger.Init("con-logger", false, false, logio),
 	}
 }

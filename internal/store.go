@@ -42,6 +42,11 @@ var channels = map[exchange.Channel]*channelDef{
 		make(chan interface{}, 100),
 		nil,
 	},
+	exchange.Depth: &channelDef{
+		&depthRecord{},
+		make(chan interface{}, 100),
+		nil,
+	},
 }
 
 type Metadata interface {
@@ -91,6 +96,31 @@ func (c *candleRecord) GetOrigin() string {
 }
 
 func (c *candleRecord) GetPair() string {
+	return c.Coin1 + "/" + c.Coin2
+}
+
+type depthValue struct {
+	Price float32 `parquet:"name=price, type=FLOAT"`
+	Qty	  float32 `parquet:"name=qty, type=FLOAT"`
+}
+
+type depthRecord struct {
+	Origin       	string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1        	string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2        	string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	FirstUpdateId	int64   `parquet:"name=first_update_id, type=INT64"`
+	LastUpdateId	int64   `parquet:"name=last_update_id, type=INT64"`
+	BidsPrice		[]float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	BidsQty   		[]float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksPrice		[]float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksQty   		[]float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+}
+
+func (c *depthRecord) GetOrigin() string {
+	return c.Origin
+}
+
+func (c *depthRecord) GetPair() string {
 	return c.Coin1 + "/" + c.Coin2
 }
 
@@ -252,7 +282,8 @@ func Writer(cfg *Config) {
 			close(writerClose)
 			writerDone.Done()
 			return
-		case e := <-exchange.Collector.MsgStream:
+		case e := <-exchange.Collector.Messages:
+			//logger.Infof("msg: %#v",e)
 			switch msg := e.(type) {
 			case *message.Trade:
 				channels[exchange.Trade].cx <- &tradeRecord{
@@ -283,6 +314,27 @@ func Writer(cfg *Config) {
 					Low:          msg.Low,
 					Volume:       msg.Volume,
 				}
+			case *message.Depth:
+				r := &depthRecord{
+					Origin:        msg.Origin.String(),
+					Coin1:         msg.Pair[0].String(),
+					Coin2:         msg.Pair[1].String(),
+					FirstUpdateId: msg.FirstUpdateId,
+					LastUpdateId:  msg.LastUpdateId,
+					BidsPrice:	   make([]float32,len(msg.Bids)),
+					BidsQty:	   make([]float32,len(msg.Bids)),
+					AsksPrice:	   make([]float32,len(msg.Asks)),
+					AsksQty:	   make([]float32,len(msg.Asks)),
+				}
+				for i, v := range msg.Bids {
+					r.BidsPrice[i] = v.Price
+					r.BidsQty[i] = v.Qty
+				}
+				for i, v := range msg.Asks {
+					r.AsksPrice[i] = v.Price
+					r.AsksQty[i] = v.Qty
+				}
+				channels[exchange.Depth].cx <- r
 			}
 		}
 	}
