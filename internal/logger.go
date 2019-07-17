@@ -34,6 +34,12 @@ func SetupLogger(cfg *Config) *loggerCloser {
 		}
 	}
 
+	if cfg.Sentry.Dsn != "" {
+		if err := logger.ConnectSentry(cfg.Sentry.Dsn); err != nil {
+			logger.Errorf("failed to connect sentry")
+		}
+	}
+
 	return &loggerCloser{
 		logio.(io.Closer),
 		logger.Init("con-logger", false, false, logio),

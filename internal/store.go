@@ -99,11 +99,6 @@ func (c *candleRecord) GetPair() string {
 	return c.Coin1 + "/" + c.Coin2
 }
 
-type depthValue struct {
-	Price float32 `parquet:"name=price, type=FLOAT"`
-	Qty   float32 `parquet:"name=qty, type=FLOAT"`
-}
-
 type depthRecord struct {
 	Origin        string    `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin1         string    `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
@@ -142,18 +137,6 @@ func cacheDir(cfg *Config) (*string, error) {
 	return &dirname, nil
 }
 
-func tempNameFromChannel(channel exchange.Channel, t time.Time) string {
-	utc := t.UTC()
-	f := fmt.Sprintf("%s-%04d%02d%02dT%02d%02d%02d.parquet~",
-		S3channelName(channel),
-		utc.Year(), utc.Month(), utc.Day(),
-		utc.Hour(), utc.Minute(), utc.Second())
-	if cacheDirname != "" {
-		f = path.Join(cacheDirname, f)
-	}
-	return f
-}
-
 func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
 	utc := t.UTC()
 	f := fmt.Sprintf("%s-%04d%02d%02dT%02d%02d%02d.parquet",
@@ -164,6 +147,10 @@ func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
 		f = path.Join(cacheDirname, f)
 	}
 	return f
+}
+
+func tempNameFromChannel(channel exchange.Channel, t time.Time) string {
+	return fileNameFromChannel(channel,t) + "~"
 }
 
 func createOneParquet(channel exchange.Channel, startedAt time.Time, cfg *Config) (*parq, error) {

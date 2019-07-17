@@ -7,3 +7,6 @@
 [submodule ".deps/coin-exchange"]
 	path = .deps/coin-exchange
 	url = git@github.com:sudachen/coin-exchange
+[submodule ".deps/logger"]
+	path = .deps/logger
+	url = https://github.com/sudachen/logger

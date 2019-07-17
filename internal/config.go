@@ -10,6 +10,10 @@ import (
 	//"path"
 )
 
+type Sentry struct {
+	Dsn string `yaml:"dsn"`
+}
+
 type S3 struct {
 	Endpoint string `yaml:"endpoint"`
 	Region   string `yaml:"region"`
@@ -27,8 +31,10 @@ type Log struct {
 }
 
 type Config struct {
-	S3        S3 `yaml:"s3"`
-	Log       Log
+	S3        S3 	 `yaml:"s3"`
+	Sentry	  Sentry `yaml:"sentry"`
+	Log       Log	 `yaml:"log"`
+
 	Pairs     []exchange.CoinPair `yaml:"-"`
 	Exchanges []exchange.Exchange `yaml:"exchanges"`
 }

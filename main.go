@@ -38,7 +38,7 @@ func main() {
 		logger.Fatal(err.Error())
 	}
 
-	logger.Infof("started, waiting for Ctrl-C")
+	logger.Rinfo("started, waiting for Ctrl-C")
 	err = internal.WaitForCtrlC()
 	logger.Info("stopping...")
 
@@ -62,5 +62,5 @@ func main() {
 		logger.Fatal(err.Error())
 	}
 
-	logger.Info("stopped successful")
+	logger.Rinfo("stopped successful")
 }
