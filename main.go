@@ -63,4 +63,5 @@ func main() {
 	}
 
 	logger.Rinfo("stopped successful")
+	logger.Info("exited")
 }

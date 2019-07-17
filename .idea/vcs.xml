@@ -3,6 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/.deps/coin-exchange" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/.deps/logger" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/gitolite-admin" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/infra" vcs="Git" />
   </component>

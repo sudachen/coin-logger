@@ -17,3 +17,10 @@ up:
 down:
 	cd infra && make coin-logger.Down
 
+checkin:
+	cd infra; make enc; git commit -am $${mesg:-updated} || true; git push || true
+	cd .deps/coin-exchange; git commit -am $${mesg:-updated} || true
+	cd .deps/logger; git commit -am $${mesg:-updated} || true
+	git commit -am $${mesg:-updated} || true
+	git push --recurse-submodules=on-demand
+
