@@ -21,12 +21,12 @@ func main() {
 	}
 
 	defer internal.SetupLogger(cfg).Close()
-	logger.SetFlags(log.Ldate|log.Ltime)
+	logger.SetFlags(log.Ldate | log.Ltime)
 	logger.Infof("starting...")
 
 	for _, ex := range cfg.Exchanges {
 		api := apifactory.Get(ex)
-		if err := api.Subscribe(cfg.Pairs, []exchange.Channel{exchange.Trade,exchange.Candlestick}); err != nil {
+		if err := api.Subscribe(cfg.Pairs, []exchange.Channel{exchange.Trade, exchange.Candlestick}); err != nil {
 			logger.Fatalf("failed to subscribe api %v", ex.String())
 		}
 		if err := api.Subscribe(cfg.Pairs, []exchange.Channel{exchange.Depth}); err != nil {

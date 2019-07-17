@@ -29,7 +29,6 @@ type S3Tags struct {
 	Channel   string
 }
 
-
 func Upload(name string, cfg *Config) {
 	s3group.Add(1)
 	go s3worker(name, cfg)
@@ -37,39 +36,43 @@ func Upload(name string, cfg *Config) {
 
 func S3channelName(channel exchange.Channel) string {
 	switch channel {
-	case exchange.Candlestick: return "candlestick"
-	case exchange.Trade: return "trade"
-	case exchange.Depth: return "depth"
-	default: return fmt.Sprintf("channel-%d", channel)
+	case exchange.Candlestick:
+		return "candlestick"
+	case exchange.Trade:
+		return "trade"
+	case exchange.Depth:
+		return "depth"
+	default:
+		return fmt.Sprintf("channel-%d", channel)
 	}
 }
 
 func makeKey(name string, s3t *S3Tags, cfg *Config) string {
 	ext := path.Ext(name)
-	dt := time.Unix(s3t.StartedAt,0).UTC()
+	dt := time.Unix(s3t.StartedAt, 0).UTC()
 	return fmt.Sprintf("%s%04d%02d/%s-%04d%02d%02dT%02d%02d%02d%s",
-				cfg.S3.Prefix,
-				dt.Year(),
-				dt.Month(),
-				//
-				s3t.Channel,
-				dt.Year(),
-				dt.Month(),
-				dt.Day(),
-				dt.Hour(),
-				dt.Minute(),
-				dt.Second(),
-				ext)
+		cfg.S3.Prefix,
+		dt.Year(),
+		dt.Month(),
+		//
+		s3t.Channel,
+		dt.Year(),
+		dt.Month(),
+		dt.Day(),
+		dt.Hour(),
+		dt.Minute(),
+		dt.Second(),
+		ext)
 }
 
 func joinKeys(m map[string]bool) string {
 	keys := make([]string, 0, len(m))
 	for k, b := range m {
 		if b {
-			keys = append(keys,k)
+			keys = append(keys, k)
 		}
 	}
-	return strings.Join(keys," ")
+	return strings.Join(keys, " ")
 }
 
 func S3tName(name string) string {
@@ -87,11 +90,11 @@ func s3open(name string) (io.Reader, *S3Tags, error) {
 	var bs []byte
 	jsName := S3tName(name)
 	if bs, err = ioutil.ReadFile(jsName); err != nil {
-		return nil, nil, fmt.Errorf("can't read metadata of %v: %v",name,err.Error())
+		return nil, nil, fmt.Errorf("can't read metadata of %v: %v", name, err.Error())
 	}
 	s3t := &S3Tags{}
-	if err= json.Unmarshal(bs,&s3t); err != nil {
-		return nil, nil, fmt.Errorf("broken metadata of %v: %v",name,err.Error())
+	if err = json.Unmarshal(bs, &s3t); err != nil {
+		return nil, nil, fmt.Errorf("broken metadata of %v: %v", name, err.Error())
 	}
 	if f, err := os.Open(name); err != nil {
 		return nil, nil, fmt.Errorf("can't open file %v: %v", name, err.Error())
@@ -107,17 +110,17 @@ func s3worker(name string, cfg *Config) {
 		if f, s3t, err := s3open(name); err != nil {
 			logger.Errorf("can't open file %v: %v", name, err.Error())
 		} else {
-			logger.Infof("s3 upload started: %v",name)
+			logger.Infof("s3 upload started: %v", name)
 			endpoint := cfg.S3.Endpoint
 			region := cfg.S3.Region
 			sess := session.Must(session.NewSession(&aws.Config{
-				Endpoint: &endpoint,
-				Region:   &region,
+				Endpoint:    &endpoint,
+				Region:      &region,
 				Credentials: credentials.NewStaticCredentials(cfg.S3.Key, cfg.S3.Secret, ""),
 			}))
 			uploader := s3manager.NewUploader(sess)
-			startedAt := time.Unix(s3t.StartedAt,0).UTC().String()
-			endedAt := time.Unix(s3t.EndedAt,0).UTC().String()
+			startedAt := time.Unix(s3t.StartedAt, 0).UTC().String()
+			endedAt := time.Unix(s3t.EndedAt, 0).UTC().String()
 			count := fmt.Sprint(s3t.Count)
 			exchanges := joinKeys(s3t.Exchanges)
 			pairs := joinKeys(s3t.Pairs)
@@ -127,20 +130,20 @@ func s3worker(name string, cfg *Config) {
 				Bucket: aws.String(cfg.S3.Bucket),
 				Key:    aws.String(key),
 				Body:   f,
-				Metadata: map[string]*string {
+				Metadata: map[string]*string{
 					"started-at": &startedAt,
-					"ended-at": &endedAt,
-					"count": &count,
-					"exchanges": &exchanges,
-					"pairs": &pairs,
-					"channel": &s3t.Channel,
+					"ended-at":   &endedAt,
+					"count":      &count,
+					"exchanges":  &exchanges,
+					"pairs":      &pairs,
+					"channel":    &s3t.Channel,
 				},
 			})
 
 			if err != nil {
 				logger.Errorf("s3 upload failed: %v", err.Error())
 			} else {
-				logger.Infof("s3 upload finished: %v",name)
+				logger.Infof("s3 upload finished: %v", name)
 				_ = os.Remove(name)
 				_ = os.Remove(S3tName(name))
 			}

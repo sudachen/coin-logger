@@ -22,13 +22,13 @@ type S3 struct {
 }
 
 type Log struct {
-	Debug 	  bool	 `yaml:"debug"`
-	WriterTo  string `yaml:"writeto"`
+	Debug    bool   `yaml:"debug"`
+	WriterTo string `yaml:"writeto"`
 }
 
 type Config struct {
-	S3        S3                  `yaml:"s3"`
-	Log		  Log
+	S3        S3 `yaml:"s3"`
+	Log       Log
 	Pairs     []exchange.CoinPair `yaml:"-"`
 	Exchanges []exchange.Exchange `yaml:"exchanges"`
 }

@@ -101,19 +101,19 @@ func (c *candleRecord) GetPair() string {
 
 type depthValue struct {
 	Price float32 `parquet:"name=price, type=FLOAT"`
-	Qty	  float32 `parquet:"name=qty, type=FLOAT"`
+	Qty   float32 `parquet:"name=qty, type=FLOAT"`
 }
 
 type depthRecord struct {
-	Origin       	string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin1        	string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin2        	string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	FirstUpdateId	int64   `parquet:"name=first_update_id, type=INT64"`
-	LastUpdateId	int64   `parquet:"name=last_update_id, type=INT64"`
-	BidsPrice		[]float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	BidsQty   		[]float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksPrice		[]float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksQty   		[]float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Origin        string    `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1         string    `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2         string    `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	FirstUpdateId int64     `parquet:"name=first_update_id, type=INT64"`
+	LastUpdateId  int64     `parquet:"name=last_update_id, type=INT64"`
+	BidsPrice     []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	BidsQty       []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksPrice     []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksQty       []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 }
 
 func (c *depthRecord) GetOrigin() string {
@@ -192,8 +192,8 @@ func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
 	} else {
 		s3t := &S3Tags{
 			Exchanges: make(map[string]bool),
-			Pairs: make(map[string]bool),
-			Channel: channel.String(),
+			Pairs:     make(map[string]bool),
+			Channel:   channel.String(),
 			StartedAt: startedAt.Unix(),
 		}
 		for !done {
@@ -203,7 +203,7 @@ func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
 				s3t.EndedAt = time.Now().Unix()
 				e1 := parq.writer.WriteStop()
 				if err := parq.source.Close(); err == nil && e1 == nil {
-					_ = os.Rename(parq.tempName,parq.fileName);
+					_ = os.Rename(parq.tempName, parq.fileName)
 					if err := S3tWrite(parq.fileName, s3t); err != nil {
 						logger.Errorf("failed to write metadata: %v", err.Error())
 					} else {
@@ -321,10 +321,10 @@ func Writer(cfg *Config) {
 					Coin2:         msg.Pair[1].String(),
 					FirstUpdateId: msg.FirstUpdateId,
 					LastUpdateId:  msg.LastUpdateId,
-					BidsPrice:	   make([]float32,len(msg.Bids)),
-					BidsQty:	   make([]float32,len(msg.Bids)),
-					AsksPrice:	   make([]float32,len(msg.Asks)),
-					AsksQty:	   make([]float32,len(msg.Asks)),
+					BidsPrice:     make([]float32, len(msg.Bids)),
+					BidsQty:       make([]float32, len(msg.Bids)),
+					AsksPrice:     make([]float32, len(msg.Asks)),
+					AsksQty:       make([]float32, len(msg.Asks)),
 				}
 				for i, v := range msg.Bids {
 					r.BidsPrice[i] = v.Price
