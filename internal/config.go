@@ -31,9 +31,9 @@ type Log struct {
 }
 
 type Config struct {
-	S3        S3 	 `yaml:"s3"`
-	Sentry	  Sentry `yaml:"sentry"`
-	Log       Log	 `yaml:"log"`
+	S3     S3     `yaml:"s3"`
+	Sentry Sentry `yaml:"sentry"`
+	Log    Log    `yaml:"log"`
 
 	Pairs     []exchange.CoinPair `yaml:"-"`
 	Exchanges []exchange.Exchange `yaml:"exchanges"`

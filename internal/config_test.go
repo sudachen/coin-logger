@@ -34,10 +34,10 @@ func Test1(t *testing.T) {
 }
 
 func Test2(t *testing.T) {
-	x, e := time.Parse("2006-01-02T15:04:05.000Z","2019-07-18T03:54:00.000Z")
-	fmt.Println(x,e)
+	x, e := time.Parse("2006-01-02T15:04:05.000Z", "2019-07-18T03:54:00.000Z")
+	fmt.Println(x, e)
 	layout := "2014-09-12T11:45:26.371Z"
 	str := "2014-11-12T11:45:26.371Z"
-	y, e := time.Parse(layout , str)
-	fmt.Println(y,e)
+	y, e := time.Parse(layout, str)
+	fmt.Println(y, e)
 }

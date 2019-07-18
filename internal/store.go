@@ -100,14 +100,14 @@ func (c *candleRecord) GetPair() string {
 }
 
 type depthRecord struct {
-	Origin        string    `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin1         string    `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin2         string    `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Timestamp     int64   	`parquet:"name=start_time, type=TIMESTAMP_MICROS"`
-	BidsPrice     []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	BidsQty       []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksPrice     []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksQty       []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Origin    string    `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1     string    `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2     string    `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Timestamp int64     `parquet:"name=start_time, type=TIMESTAMP_MICROS"`
+	BidsPrice []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	BidsQty   []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksPrice []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksQty   []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 }
 
 func (c *depthRecord) GetOrigin() string {
@@ -149,7 +149,7 @@ func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
 }
 
 func tempNameFromChannel(channel exchange.Channel, t time.Time) string {
-	return fileNameFromChannel(channel,t) + "~"
+	return fileNameFromChannel(channel, t) + "~"
 }
 
 func createOneParquet(channel exchange.Channel, startedAt time.Time, cfg *Config) (*parq, error) {
@@ -303,14 +303,14 @@ func Writer(cfg *Config) {
 			case *message.Depth:
 				//fmt.Println("%#v",msg)
 				r := &depthRecord{
-					Origin:        msg.Origin.String(),
-					Coin1:         msg.Pair[0].String(),
-					Coin2:         msg.Pair[1].String(),
-					Timestamp:     msg.Timestamp.UTC().UnixNano() / 1000,
-					BidsPrice:     make([]float32, len(msg.Bids)),
-					BidsQty:       make([]float32, len(msg.Bids)),
-					AsksPrice:     make([]float32, len(msg.Asks)),
-					AsksQty:       make([]float32, len(msg.Asks)),
+					Origin:    msg.Origin.String(),
+					Coin1:     msg.Pair[0].String(),
+					Coin2:     msg.Pair[1].String(),
+					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
+					BidsPrice: make([]float32, len(msg.Bids)),
+					BidsQty:   make([]float32, len(msg.Bids)),
+					AsksPrice: make([]float32, len(msg.Asks)),
+					AsksQty:   make([]float32, len(msg.Asks)),
 				}
 				for i, v := range msg.Bids {
 					r.BidsPrice[i] = v.Price
