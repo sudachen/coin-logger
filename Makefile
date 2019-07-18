@@ -9,6 +9,7 @@ push: build dock
 	docker push sudachen/coin-logger:latest
 
 restart: push
+	cd infra && make enc
 	cd infra && make coin-logger.Restart
 
 up:
@@ -16,6 +17,9 @@ up:
 
 down:
 	cd infra && make coin-logger.Down
+
+ssh:
+	cd infra && make coin-logger.Ssh
 
 checkin:
 	cd infra; make enc; git commit -am $${mesg:-updated} || true; git push || true

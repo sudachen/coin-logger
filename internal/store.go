@@ -103,8 +103,7 @@ type depthRecord struct {
 	Origin        string    `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin1         string    `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin2         string    `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	FirstUpdateId int64     `parquet:"name=first_update_id, type=INT64"`
-	LastUpdateId  int64     `parquet:"name=last_update_id, type=INT64"`
+	Timestamp     int64   	`parquet:"name=start_time, type=TIMESTAMP_MICROS"`
 	BidsPrice     []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 	BidsQty       []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 	AsksPrice     []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
@@ -282,15 +281,15 @@ func Writer(cfg *Config) {
 					Qty:            msg.Qty,
 					BuyerOrderId:   msg.BuyerOrderId,
 					SellerOrderId:  msg.SellerOrderId,
-					TradeOrderTime: msg.TradeOrderTime.UnixNano() / 1000,
+					TradeOrderTime: msg.TradeOrderTime.UTC().UnixNano() / 1000,
 				}
 			case *message.Candlestick:
 				channels[exchange.Candlestick].cx <- &candleRecord{
 					Origin:       msg.Origin.String(),
 					Coin1:        msg.Pair[0].String(),
 					Coin2:        msg.Pair[1].String(),
-					StartTime:    msg.StartTime.UnixNano() / 1000,
-					EndTime:      msg.EndTime.UnixNano() / 1000,
+					StartTime:    msg.StartTime.UTC().UnixNano() / 1000,
+					EndTime:      msg.EndTime.UTC().UnixNano() / 1000,
 					Interval:     msg.Interval,
 					TradeNum:     msg.TradeNum,
 					FirstTradeId: msg.FirstTradeId,
@@ -302,12 +301,12 @@ func Writer(cfg *Config) {
 					Volume:       msg.Volume,
 				}
 			case *message.Depth:
+				//fmt.Println("%#v",msg)
 				r := &depthRecord{
 					Origin:        msg.Origin.String(),
 					Coin1:         msg.Pair[0].String(),
 					Coin2:         msg.Pair[1].String(),
-					FirstUpdateId: msg.FirstUpdateId,
-					LastUpdateId:  msg.LastUpdateId,
+					Timestamp:     msg.Timestamp.UTC().UnixNano() / 1000,
 					BidsPrice:     make([]float32, len(msg.Bids)),
 					BidsQty:       make([]float32, len(msg.Bids)),
 					AsksPrice:     make([]float32, len(msg.Asks)),

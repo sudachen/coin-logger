@@ -50,10 +50,12 @@ func S3channelName(channel exchange.Channel) string {
 func makeKey(name string, s3t *S3Tags, cfg *Config) string {
 	ext := path.Ext(name)
 	dt := time.Unix(s3t.StartedAt, 0).UTC()
-	return fmt.Sprintf("%s%04d%02d/%s-%04d%02d%02dT%02d%02d%02d%s",
+	_, week := dt.ISOWeek()
+	return fmt.Sprintf("%s%04d%02d.%02d/%s-%04d%02d%02dT%02d%02d%02d%s",
 		cfg.S3.Prefix,
 		dt.Year(),
 		dt.Month(),
+		week,
 		//
 		s3t.Channel,
 		dt.Year(),
