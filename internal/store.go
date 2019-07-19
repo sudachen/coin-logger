@@ -55,15 +55,13 @@ type Metadata interface {
 }
 
 type tradeRecord struct {
-	Origin         string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin1          string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin2          string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	TradeId        int64   `parquet:"name=trade_id, type=INT64"`
-	Price          float32 `parquet:"name=price, type=FLOAT"`
-	Qty            float32 `parquet:"name=qty, type=FLOAT"`
-	BuyerOrderId   int64   `parquet:"name=bayer_order_id, type=INT64"`
-	SellerOrderId  int64   `parquet:"name=seller_order_id, type=INT64"`
-	TradeOrderTime int64   `parquet:"name=trader_time, type=TIMESTAMP_MICROS"`
+	Origin    string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1     string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2     string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Price     float32 `parquet:"name=price, type=FLOAT"`
+	Qty       float32 `parquet:"name=qty, type=FLOAT"`
+	Sell      bool    `parquet:"name=sell, type=BOOLEAN"`
+	Timestamp int64   `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
 }
 
 func (c *tradeRecord) GetOrigin() string {
@@ -75,20 +73,17 @@ func (c *tradeRecord) GetPair() string {
 }
 
 type candleRecord struct {
-	Origin       string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin1        string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin2        string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	StartTime    int64   `parquet:"name=start_time, type=TIMESTAMP_MICROS"`
-	EndTime      int64   `parquet:"name=end_time, type=TIMESTAMP_MICROS"`
-	Interval     int32   `parquet:"name=interval, type=INT32"`
-	TradeNum     int32   `parquet:"name=tradenum, type=INT32"`
-	FirstTradeId int64   `parquet:"name=first_trade_id, type=INT64"`
-	LastTradeId  int64   `parquet:"name=last_trade_id, type=INT64"`
-	Open         float32 `parquet:"name=open, type=FLOAT"`
-	Close        float32 `parquet:"name=close, type=FLOAT"`
-	High         float32 `parquet:"name=high, type=FLOAT"`
-	Low          float32 `parquet:"name=low, type=FLOAT"`
-	Volume       float32 `parquet:"name=volume, type=FLOAT"`
+	Origin    string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1     string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2     string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Interval  int32   `parquet:"name=interval, type=INT32"`
+	TradeNum  int32   `parquet:"name=tradenum, type=INT32"`
+	Open      float32 `parquet:"name=open, type=FLOAT"`
+	Close     float32 `parquet:"name=close, type=FLOAT"`
+	High      float32 `parquet:"name=high, type=FLOAT"`
+	Low       float32 `parquet:"name=low, type=FLOAT"`
+	Volume    float32 `parquet:"name=volume, type=FLOAT"`
+	Timestamp int64   `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
 }
 
 func (c *candleRecord) GetOrigin() string {
@@ -100,14 +95,22 @@ func (c *candleRecord) GetPair() string {
 }
 
 type depthRecord struct {
-	Origin    string    `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin1     string    `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin2     string    `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Timestamp int64     `parquet:"name=start_time, type=TIMESTAMP_MICROS"`
-	BidsPrice []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	BidsQty   []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksPrice []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksQty   []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Origin     string    `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1      string    `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2      string    `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Timestamp  int64     `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
+	BidsAvg    float32   `parquet:"name=bids_avg, type=FLOAT"`
+	BidsMedian float32   `parquet:"name=bids_median, type=FLOAT"`
+	BidsVolume float32   `parquet:"name=bids_volume, type=FLOAT"`
+	BidsSum    float32   `parquet:"name=bids_sum, type=FLOAT"`
+	AsksAvg    float32   `parquet:"name=asks_avg, type=FLOAT"`
+	AsksMedian float32   `parquet:"name=asks_median, type=FLOAT"`
+	AsksVolume float32   `parquet:"name=asks_volume, type=FLOAT"`
+	AsksSum    float32   `parquet:"name=asks_sum, type=FLOAT"`
+	BidsPrice  []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	BidsQty    []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksPrice  []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksQty    []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 }
 
 func (c *depthRecord) GetOrigin() string {
@@ -163,6 +166,7 @@ func createOneParquet(channel exchange.Channel, startedAt time.Time, cfg *Config
 			logger.Errorf("Can't create parquet writer: %v", err)
 			return nil, err
 		} else {
+			pw.RowGroupSize = 16 * 1024 * 1024 //10M
 			return &parq{tempName, fileName, startedAt, fw, pw}, nil
 		}
 	}
@@ -273,52 +277,63 @@ func Writer(cfg *Config) {
 			switch msg := e.(type) {
 			case *message.Trade:
 				channels[exchange.Trade].cx <- &tradeRecord{
-					Origin:         msg.Origin.String(),
-					Coin1:          msg.Pair[0].String(),
-					Coin2:          msg.Pair[1].String(),
-					TradeId:        msg.TradeId,
-					Price:          msg.Price,
-					Qty:            msg.Qty,
-					BuyerOrderId:   msg.BuyerOrderId,
-					SellerOrderId:  msg.SellerOrderId,
-					TradeOrderTime: msg.TradeOrderTime.UTC().UnixNano() / 1000,
+					Origin:    msg.Origin.String(),
+					Coin1:     msg.Pair[0].String(),
+					Coin2:     msg.Pair[1].String(),
+					Price:     msg.Price,
+					Qty:       msg.Qty,
+					Sell:      msg.Sell,
+					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
 				}
 			case *message.Candlestick:
 				channels[exchange.Candlestick].cx <- &candleRecord{
-					Origin:       msg.Origin.String(),
-					Coin1:        msg.Pair[0].String(),
-					Coin2:        msg.Pair[1].String(),
-					StartTime:    msg.StartTime.UTC().UnixNano() / 1000,
-					EndTime:      msg.EndTime.UTC().UnixNano() / 1000,
-					Interval:     msg.Interval,
-					TradeNum:     msg.TradeNum,
-					FirstTradeId: msg.FirstTradeId,
-					LastTradeId:  msg.LastTradeId,
-					Open:         msg.Open,
-					Close:        msg.Close,
-					High:         msg.High,
-					Low:          msg.Low,
-					Volume:       msg.Volume,
+					Origin:    msg.Origin.String(),
+					Coin1:     msg.Pair[0].String(),
+					Coin2:     msg.Pair[1].String(),
+					Interval:  msg.Interval,
+					TradeNum:  msg.TradeNum,
+					Open:      msg.Open,
+					Close:     msg.Close,
+					High:      msg.High,
+					Low:       msg.Low,
+					Volume:    msg.Volume,
+					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
 				}
 			case *message.Depth:
 				//fmt.Println("%#v",msg)
 				r := &depthRecord{
-					Origin:    msg.Origin.String(),
-					Coin1:     msg.Pair[0].String(),
-					Coin2:     msg.Pair[1].String(),
-					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
-					BidsPrice: make([]float32, len(msg.Bids)),
-					BidsQty:   make([]float32, len(msg.Bids)),
-					AsksPrice: make([]float32, len(msg.Asks)),
-					AsksQty:   make([]float32, len(msg.Asks)),
+					Origin:     msg.Origin.String(),
+					Coin1:      msg.Pair[0].String(),
+					Coin2:      msg.Pair[1].String(),
+					Timestamp:  msg.Timestamp.UTC().UnixNano() / 1000,
+					BidsPrice:  make([]float32, 3),
+					BidsQty:    make([]float32, 3),
+					AsksPrice:  make([]float32, 3),
+					AsksQty:    make([]float32, 3),
+					BidsAvg:    msg.AggBids.Avg,
+					BidsMedian: msg.AggBids.Median,
+					BidsVolume: msg.AggBids.Volume,
+					BidsSum:    msg.AggBids.Qty,
+					AsksAvg:    msg.AggAsks.Avg,
+					AsksMedian: msg.AggAsks.Median,
+					AsksVolume: msg.AggAsks.Volume,
+					AsksSum:    msg.AggAsks.Qty,
 				}
 				for i, v := range msg.Bids {
-					r.BidsPrice[i] = v.Price
-					r.BidsQty[i] = v.Qty
+					if i < 3 {
+						r.BidsPrice[i] = v.Price
+						r.BidsQty[i] = v.Qty
+					} else {
+						break
+					}
 				}
 				for i, v := range msg.Asks {
-					r.AsksPrice[i] = v.Price
-					r.AsksQty[i] = v.Qty
+					if i < 3 {
+						r.AsksPrice[i] = v.Price
+						r.AsksQty[i] = v.Qty
+					} else {
+						break
+					}
 				}
 				channels[exchange.Depth].cx <- r
 			}

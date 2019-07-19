@@ -6,7 +6,6 @@ import (
 	"github.com/sudachen/coin-exchange/exchange"
 	"github.com/sudachen/coin-exchange/exchange/apifactory"
 	"github.com/sudachen/coin-logger/internal"
-	"log"
 	"sync"
 	"time"
 )
@@ -21,7 +20,7 @@ func main() {
 	}
 
 	defer internal.SetupLogger(cfg).Close()
-	logger.SetFlags(log.Ldate | log.Ltime)
+	//logger.SetFlags(log.Ldate | log.Ltime)
 	logger.Infof("starting...")
 
 	for _, ex := range cfg.Exchanges {

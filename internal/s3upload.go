@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const VersionString = "5"
+
 var s3group = sync.WaitGroup{}
 
 type S3Tags struct {
@@ -51,11 +53,12 @@ func makeKey(name string, s3t *S3Tags, cfg *Config) string {
 	ext := path.Ext(name)
 	dt := time.Unix(s3t.StartedAt, 0).UTC()
 	_, week := dt.ISOWeek()
-	return fmt.Sprintf("%s%04d%02d.%02d/%s-%04d%02d%02dT%02d%02d%02d%s",
+	return fmt.Sprintf("%s%04d%02d.%02d.%s/%s-%04d%02d%02dT%02d%02d%02d%s",
 		cfg.S3.Prefix,
 		dt.Year(),
 		dt.Month(),
 		week,
+		VersionString,
 		//
 		s3t.Channel,
 		dt.Year(),
@@ -127,6 +130,7 @@ func s3worker(name string, cfg *Config) {
 			exchanges := joinKeys(s3t.Exchanges)
 			pairs := joinKeys(s3t.Pairs)
 			key := makeKey(name, s3t, cfg)
+			version := VersionString
 
 			_, err := uploader.Upload(&s3manager.UploadInput{
 				Bucket: aws.String(cfg.S3.Bucket),
@@ -139,6 +143,7 @@ func s3worker(name string, cfg *Config) {
 					"exchanges":  &exchanges,
 					"pairs":      &pairs,
 					"channel":    &s3t.Channel,
+					"version":    &version,
 				},
 			})
 

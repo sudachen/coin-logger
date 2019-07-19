@@ -5,10 +5,10 @@ build:
 dock:
 	docker build -t sudachen/coin-logger:latest docker
 
-push: build dock
+push:
 	docker push sudachen/coin-logger:latest
 
-restart: push
+restart: build dock push
 	cd infra && make enc
 	cd infra && make coin-logger.Restart
 
@@ -22,9 +22,9 @@ ssh:
 	cd infra && make coin-logger.Ssh
 
 checkin:
-	cd infra; make enc; git commit -am $${mesg:-updated} || true; git push || true
-	cd .deps/coin-exchange; git commit -am $${mesg:-updated} || true
-	cd .deps/logger; git commit -am $${mesg:-updated} || true
-	git commit -am $${mesg:-updated} || true
+	cd infra; make enc; git commit -am "$${mesg:-updated}" || true; git push || true
+	cd .deps/coin-exchange; git commit -am "$${mesg:-updated}" || true
+	cd .deps/logger; git commit -am "$${mesg:-updated}" || true
+	git commit -am "$${mesg:-updated}" || true
 	git push --recurse-submodules=on-demand
 
