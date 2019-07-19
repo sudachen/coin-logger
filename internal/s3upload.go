@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const VersionString = "5"
+const VersionString = "7"
 
 var s3group = sync.WaitGroup{}
 

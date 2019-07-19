@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+const depthLength = 3
+
 var cacheDirname string
 var waitGroup sync.WaitGroup
 
@@ -95,22 +97,22 @@ func (c *candleRecord) GetPair() string {
 }
 
 type depthRecord struct {
-	Origin     string    `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin1      string    `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Coin2      string    `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
-	Timestamp  int64     `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
-	BidsAvg    float32   `parquet:"name=bids_avg, type=FLOAT"`
-	BidsMedian float32   `parquet:"name=bids_median, type=FLOAT"`
-	BidsVolume float32   `parquet:"name=bids_volume, type=FLOAT"`
-	BidsSum    float32   `parquet:"name=bids_sum, type=FLOAT"`
-	AsksAvg    float32   `parquet:"name=asks_avg, type=FLOAT"`
-	AsksMedian float32   `parquet:"name=asks_median, type=FLOAT"`
-	AsksVolume float32   `parquet:"name=asks_volume, type=FLOAT"`
-	AsksSum    float32   `parquet:"name=asks_sum, type=FLOAT"`
-	BidsPrice  []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	BidsQty    []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksPrice  []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksQty    []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Origin    string `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1     string `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2     string `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Timestamp int64  `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
+	//BidsAvg    float32   `parquet:"name=bids_avg, type=FLOAT"`
+	//BidsMedian float32   `parquet:"name=bids_median, type=FLOAT"`
+	//BidsVolume float32   `parquet:"name=bids_volume, type=FLOAT"`
+	//BidsSum    float32   `parquet:"name=bids_sum, type=FLOAT"`
+	//AsksAvg    float32   `parquet:"name=asks_avg, type=FLOAT"`
+	//AsksMedian float32   `parquet:"name=asks_median, type=FLOAT"`
+	//AsksVolume float32   `parquet:"name=asks_volume, type=FLOAT"`
+	//AsksSum    float32   `parquet:"name=asks_sum, type=FLOAT"`
+	BidsPrice []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	BidsQty   []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksPrice []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksQty   []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 }
 
 func (c *depthRecord) GetOrigin() string {
@@ -302,25 +304,25 @@ func Writer(cfg *Config) {
 			case *message.Depth:
 				//fmt.Println("%#v",msg)
 				r := &depthRecord{
-					Origin:     msg.Origin.String(),
-					Coin1:      msg.Pair[0].String(),
-					Coin2:      msg.Pair[1].String(),
-					Timestamp:  msg.Timestamp.UTC().UnixNano() / 1000,
-					BidsPrice:  make([]float32, 3),
-					BidsQty:    make([]float32, 3),
-					AsksPrice:  make([]float32, 3),
-					AsksQty:    make([]float32, 3),
-					BidsAvg:    msg.AggBids.Avg,
-					BidsMedian: msg.AggBids.Median,
-					BidsVolume: msg.AggBids.Volume,
-					BidsSum:    msg.AggBids.Qty,
-					AsksAvg:    msg.AggAsks.Avg,
-					AsksMedian: msg.AggAsks.Median,
-					AsksVolume: msg.AggAsks.Volume,
-					AsksSum:    msg.AggAsks.Qty,
+					Origin:    msg.Origin.String(),
+					Coin1:     msg.Pair[0].String(),
+					Coin2:     msg.Pair[1].String(),
+					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
+					BidsPrice: make([]float32, depthLength),
+					BidsQty:   make([]float32, depthLength),
+					AsksPrice: make([]float32, depthLength),
+					AsksQty:   make([]float32, depthLength),
+					//BidsAvg:    msg.AggBids.Avg,
+					//BidsMedian: msg.AggBids.Median,
+					//BidsVolume: msg.AggBids.Volume,
+					//BidsSum:    msg.AggBids.Qty,
+					//AsksAvg:    msg.AggAsks.Avg,
+					//AsksMedian: msg.AggAsks.Median,
+					//AsksVolume: msg.AggAsks.Volume,
+					//AsksSum:    msg.AggAsks.Qty,
 				}
 				for i, v := range msg.Bids {
-					if i < 3 {
+					if i < depthLength {
 						r.BidsPrice[i] = v.Price
 						r.BidsQty[i] = v.Qty
 					} else {
@@ -328,7 +330,7 @@ func Writer(cfg *Config) {
 					}
 				}
 				for i, v := range msg.Asks {
-					if i < 3 {
+					if i < depthLength {
 						r.AsksPrice[i] = v.Price
 						r.AsksQty[i] = v.Qty
 					} else {
