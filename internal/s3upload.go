@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const VersionString = "7"
+const VersionString = "9"
 
 var s3group = sync.WaitGroup{}
 
@@ -26,8 +26,17 @@ type S3Tags struct {
 	StartedAt int64
 	EndedAt   int64
 	Count     int32
-	Exchanges map[string]bool
-	Pairs     map[string]bool
+	Exchanges map[int32]int32
+	Pairs     map[int32]int32
+	ChannelNo int32
+}
+
+type S3Meta struct {
+	StartedAt string
+	EndedAt   string
+	Count     int32
+	Exchanges map[string]int32
+	Pairs     map[string]int32
 	Channel   string
 }
 
@@ -53,14 +62,14 @@ func makeKey(name string, s3t *S3Tags, cfg *Config) string {
 	ext := path.Ext(name)
 	dt := time.Unix(s3t.StartedAt, 0).UTC()
 	_, week := dt.ISOWeek()
-	return fmt.Sprintf("%s%04d%02d.%02d.%s/%s-%04d%02d%02dT%02d%02d%02d%s",
+	return fmt.Sprintf("%s%04d%02d.%02d.%s/%d-%04d%02d%02dT%02d%02d%02d%s",
 		cfg.S3.Prefix,
 		dt.Year(),
 		dt.Month(),
 		week,
 		VersionString,
 		//
-		s3t.Channel,
+		s3t.ChannelNo,
 		dt.Year(),
 		dt.Month(),
 		dt.Day(),
@@ -70,11 +79,19 @@ func makeKey(name string, s3t *S3Tags, cfg *Config) string {
 		ext)
 }
 
-func joinKeys(m map[string]bool) string {
+func mapKeys(m map[int32]int32, cv func(int32)string) map[string]int32 {
+	r := make(map[string]int32)
+	for k, n := range m {
+		r[cv(k)] = n
+	}
+	return r
+}
+
+func joinKeys(m map[int32]int32, cv func(int32)string) string {
 	keys := make([]string, 0, len(m))
-	for k, b := range m {
-		if b {
-			keys = append(keys, k)
+	for k, n := range m {
+		if n != 0 {
+			keys = append(keys, cv(k))
 		}
 	}
 	return strings.Join(keys, " ")
@@ -127,10 +144,21 @@ func s3worker(name string, cfg *Config) {
 			startedAt := time.Unix(s3t.StartedAt, 0).UTC().String()
 			endedAt := time.Unix(s3t.EndedAt, 0).UTC().String()
 			count := fmt.Sprint(s3t.Count)
-			exchanges := joinKeys(s3t.Exchanges)
-			pairs := joinKeys(s3t.Pairs)
+			exchanges := joinKeys(s3t.Exchanges, func(e int32)string{return exchange.Exchange(e).String()})
+			pairs := joinKeys(s3t.Pairs, func(p int32)string{return (&exchange.CoinPair{}).FromInt(p).String()})
 			key := makeKey(name, s3t, cfg)
 			version := VersionString
+			channel := S3channelName(exchange.Channel(s3t.ChannelNo))
+
+			bs, _ := json.Marshal(&S3Meta{
+				StartedAt: startedAt,
+				EndedAt: endedAt,
+				Exchanges: mapKeys(s3t.Exchanges, func(e int32)string{return exchange.Exchange(e).String()}),
+				Pairs: mapKeys(s3t.Pairs, func(p int32)string{return (&exchange.CoinPair{}).FromInt(p).String()}),
+				Channel: channel,
+				Count: s3t.Count,
+			})
+			detail := string(bs)
 
 			_, err := uploader.Upload(&s3manager.UploadInput{
 				Bucket: aws.String(cfg.S3.Bucket),
@@ -142,8 +170,9 @@ func s3worker(name string, cfg *Config) {
 					"count":      &count,
 					"exchanges":  &exchanges,
 					"pairs":      &pairs,
-					"channel":    &s3t.Channel,
+					"channel":    &channel,
 					"version":    &version,
+					"z-detail":	  &detail,
 				},
 			})
 

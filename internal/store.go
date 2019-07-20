@@ -52,11 +52,17 @@ var channels = map[exchange.Channel]*channelDef{
 }
 
 type Metadata interface {
-	GetOrigin() string
-	GetPair() string
+	GetOrigin() exchange.Exchange
+	GetPair() exchange.CoinPair
+}
+
+type record struct {
+	exchange.Exchange
+	exchange.CoinPair
 }
 
 type tradeRecord struct {
+	record
 	Origin    string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin1     string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin2     string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
@@ -66,15 +72,16 @@ type tradeRecord struct {
 	Timestamp int64   `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
 }
 
-func (c *tradeRecord) GetOrigin() string {
-	return c.Origin
+func (r *tradeRecord) GetOrigin() exchange.Exchange {
+	return r.Exchange
 }
 
-func (c *tradeRecord) GetPair() string {
-	return c.Coin1 + "/" + c.Coin2
+func (r *tradeRecord) GetPair() exchange.CoinPair {
+	return r.CoinPair
 }
 
 type candleRecord struct {
+	record
 	Origin    string  `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin1     string  `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin2     string  `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
@@ -88,15 +95,16 @@ type candleRecord struct {
 	Timestamp int64   `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
 }
 
-func (c *candleRecord) GetOrigin() string {
-	return c.Origin
+func (r *candleRecord) GetOrigin() exchange.Exchange {
+	return r.Exchange
 }
 
-func (c *candleRecord) GetPair() string {
-	return c.Coin1 + "/" + c.Coin2
+func (r *candleRecord) GetPair() exchange.CoinPair {
+	return r.CoinPair
 }
 
 type depthRecord struct {
+	record
 	Origin    string `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin1     string `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin2     string `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
@@ -115,12 +123,12 @@ type depthRecord struct {
 	AsksQty   []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 }
 
-func (c *depthRecord) GetOrigin() string {
-	return c.Origin
+func (r *depthRecord) GetOrigin() exchange.Exchange {
+	return r.Exchange
 }
 
-func (c *depthRecord) GetPair() string {
-	return c.Coin1 + "/" + c.Coin2
+func (r *depthRecord) GetPair() exchange.CoinPair {
+	return r.CoinPair
 }
 
 func cacheDir(cfg *Config) (*string, error) {
@@ -143,8 +151,8 @@ func cacheDir(cfg *Config) (*string, error) {
 
 func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
 	utc := t.UTC()
-	f := fmt.Sprintf("%s-%04d%02d%02dT%02d%02d%02d.parquet",
-		S3channelName(channel),
+	f := fmt.Sprintf("%d-%04d%02d%02dT%02d%02d%02d.pqt",
+		channel,
 		utc.Year(), utc.Month(), utc.Day(),
 		utc.Hour(), utc.Minute(), utc.Second())
 	if cacheDirname != "" {
@@ -183,9 +191,9 @@ func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
 		logger.Fatal(err.Error())
 	} else {
 		s3t := &S3Tags{
-			Exchanges: make(map[string]bool),
-			Pairs:     make(map[string]bool),
-			Channel:   channel.String(),
+			Exchanges: make(map[int32]int32),
+			Pairs:     make(map[int32]int32),
+			ChannelNo: int32(channel),
 			StartedAt: startedAt.Unix(),
 		}
 		for !done {
@@ -206,8 +214,8 @@ func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
 			case r := <-channels[channel].cx:
 				m := r.(Metadata)
 				s3t.Count += 1
-				s3t.Exchanges[m.GetOrigin()] = true
-				s3t.Pairs[m.GetPair()] = true
+				s3t.Exchanges[int32(m.GetOrigin())] += 1
+				s3t.Pairs[m.GetPair().AsInt()] += 1
 				if err := parq.writer.Write(r); err != nil {
 					logger.Fatal(err.Error())
 				}
@@ -279,6 +287,7 @@ func Writer(cfg *Config) {
 			switch msg := e.(type) {
 			case *message.Trade:
 				channels[exchange.Trade].cx <- &tradeRecord{
+					record:    record{msg.Origin,msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
 					Coin2:     msg.Pair[1].String(),
@@ -289,6 +298,7 @@ func Writer(cfg *Config) {
 				}
 			case *message.Candlestick:
 				channels[exchange.Candlestick].cx <- &candleRecord{
+					record:    record{msg.Origin,msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
 					Coin2:     msg.Pair[1].String(),
@@ -304,6 +314,7 @@ func Writer(cfg *Config) {
 			case *message.Depth:
 				//fmt.Println("%#v",msg)
 				r := &depthRecord{
+					record:    record{msg.Origin,msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
 					Coin2:     msg.Pair[1].String(),
@@ -360,4 +371,5 @@ func StopWriter() {
 	logger.Info("waiting for writers\n")
 	writerDone.Wait()
 	logger.Info("all writers finished\n")
+	WaitForUploads()
 }

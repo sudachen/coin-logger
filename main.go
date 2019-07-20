@@ -38,28 +38,16 @@ func main() {
 	}
 
 	logger.Rinfo("started, waiting for Ctrl-C")
-	err = internal.WaitForCtrlC()
+	internal.WaitForCtrlC()
 	logger.Info("stopping...")
 
 	wg := sync.WaitGroup{}
 	for _, ex := range cfg.Exchanges {
-		wg.Add(1)
-		go func() {
-			api := apifactory.Get(ex)
-			if err := api.UnsubscribeAll(time.Second * 10); err != nil {
-				logger.Errorf("on shutdown: %v", err.Error())
-			}
-			wg.Done()
-		}()
+		apifactory.Get(ex).UnsubscribeAll(time.Second * 5, &wg)
 	}
 	wg.Wait()
 
 	internal.StopWriter()
-	internal.WaitForUploads()
-
-	if err != nil {
-		logger.Fatal(err.Error())
-	}
 
 	logger.Rinfo("stopped successful")
 	logger.Info("exited")
