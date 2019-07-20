@@ -15,14 +15,11 @@ import (
 )
 
 const depthLength = 3
-
 var cacheDirname string
-var waitGroup sync.WaitGroup
 
 type channelDef struct {
 	df    interface{}
 	cx    chan interface{}
-	close chan struct{}
 }
 
 type parq struct {
@@ -33,32 +30,37 @@ type parq struct {
 	writer    *writer.ParquetWriter
 }
 
-var channels = map[exchange.Channel]*channelDef{
-	exchange.Trade: &channelDef{
-		&tradeRecord{},
-		make(chan interface{}, 100),
-		nil,
-	},
-	exchange.Candlestick: &channelDef{
-		&candleRecord{},
-		make(chan interface{}, 100),
-		nil,
-	},
-	exchange.Depth: &channelDef{
-		&depthRecord{},
-		make(chan interface{}, 100),
-		nil,
-	},
-}
+const channelLength = 31
+const indexChannelLength = channelLength*3/2
 
 type Metadata interface {
 	GetOrigin() exchange.Exchange
 	GetPair() exchange.CoinPair
+	GetTimestamp() int64
 }
 
 type record struct {
 	exchange.Exchange
 	exchange.CoinPair
+}
+
+type indexRecord struct {
+	record
+	Channel   int32   `parquet:"name=channel, type=INT32"`
+	Index	  int32   `parquet:"name=index, type=INT32"`
+	Timestamp int64   `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
+}
+
+func (r *indexRecord) GetOrigin() exchange.Exchange {
+	return r.Exchange
+}
+
+func (r *indexRecord) GetPair() exchange.CoinPair {
+	return r.CoinPair
+}
+
+func (r *indexRecord) GetTimestamp() int64 {
+	return r.Timestamp
 }
 
 type tradeRecord struct {
@@ -70,6 +72,10 @@ type tradeRecord struct {
 	Qty       float32 `parquet:"name=qty, type=FLOAT"`
 	Sell      bool    `parquet:"name=sell, type=BOOLEAN"`
 	Timestamp int64   `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
+}
+
+func (r *tradeRecord) GetTimestamp() int64 {
+	return r.Timestamp
 }
 
 func (r *tradeRecord) GetOrigin() exchange.Exchange {
@@ -93,6 +99,10 @@ type candleRecord struct {
 	Low       float32 `parquet:"name=low, type=FLOAT"`
 	Volume    float32 `parquet:"name=volume, type=FLOAT"`
 	Timestamp int64   `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
+}
+
+func (r *candleRecord) GetTimestamp() int64 {
+	return r.Timestamp
 }
 
 func (r *candleRecord) GetOrigin() exchange.Exchange {
@@ -123,6 +133,10 @@ type depthRecord struct {
 	AsksQty   []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 }
 
+func (r *depthRecord) GetTimestamp() int64 {
+	return r.Timestamp
+}
+
 func (r *depthRecord) GetOrigin() exchange.Exchange {
 	return r.Exchange
 }
@@ -151,10 +165,10 @@ func cacheDir(cfg *Config) (*string, error) {
 
 func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
 	utc := t.UTC()
-	f := fmt.Sprintf("%d-%04d%02d%02dT%02d%02d%02d.pqt",
-		channel,
+	f := fmt.Sprintf("%04d%02d%02dT%02d%02d%02d-%d.pqt",
 		utc.Year(), utc.Month(), utc.Day(),
-		utc.Hour(), utc.Minute(), utc.Second())
+		utc.Hour(), utc.Minute(), utc.Second(),
+		channel)
 	if cacheDirname != "" {
 		f = path.Join(cacheDirname, f)
 	}
@@ -165,14 +179,14 @@ func tempNameFromChannel(channel exchange.Channel, t time.Time) string {
 	return fileNameFromChannel(channel, t) + "~"
 }
 
-func createOneParquet(channel exchange.Channel, startedAt time.Time, cfg *Config) (*parq, error) {
+func createOneParquet(channel exchange.Channel, df interface{}, startedAt time.Time, cfg *Config) (*parq, error) {
 	tempName := tempNameFromChannel(channel, startedAt)
 	fileName := fileNameFromChannel(channel, startedAt)
 	if fw, err := local.NewLocalFileWriter(tempName); err != nil {
 		logger.Errorf("Can't create local file: %v", err)
 		return nil, err
 	} else {
-		if pw, err := writer.NewParquetWriter(fw, channels[channel].df, 4); err != nil {
+		if pw, err := writer.NewParquetWriter(fw, df, 4); err != nil {
 			logger.Errorf("Can't create parquet writer: %v", err)
 			return nil, err
 		} else {
@@ -182,111 +196,182 @@ func createOneParquet(channel exchange.Channel, startedAt time.Time, cfg *Config
 	}
 }
 
-func worker1(channel exchange.Channel, startedAt time.Time, cfg *Config) {
-	done := false
-	c := make(chan struct{}, 1)
-	channels[channel].close = c
-	parq, err := createOneParquet(channel, startedAt, cfg)
+type Channels struct {
+	channels map[exchange.Channel]*channelDef
+	sync.WaitGroup
+}
+
+func (self *Channels) worker(channel exchange.Channel, df interface{}, cr chan interface{}, ci chan interface{}, startedAt time.Time, cfg *Config) {
+
+	parq, err := createOneParquet(channel, df, startedAt, cfg)
+	indexCloseCount := 0
+
 	if err != nil {
 		logger.Fatal(err.Error())
 	} else {
+
+		//logger.Infof("writer started: %s\n", parq.fileName)
+
 		s3t := &S3Tags{
 			Exchanges: make(map[int32]int32),
 			Pairs:     make(map[int32]int32),
 			ChannelNo: int32(channel),
 			StartedAt: startedAt.Unix(),
 		}
-		for !done {
-			select {
-			case <-c:
-				close(c)
-				s3t.EndedAt = time.Now().Unix()
-				e1 := parq.writer.WriteStop()
-				if err := parq.source.Close(); err == nil && e1 == nil {
-					_ = os.Rename(parq.tempName, parq.fileName)
-					if err := S3tWrite(parq.fileName, s3t); err != nil {
-						logger.Errorf("failed to write metadata: %v", err.Error())
-					} else {
-						Upload(parq.fileName, cfg)
+
+		var timemark map[int32]int64
+
+		for {
+
+			r,ok := <-cr
+			if !ok {break}
+
+			if channel == exchange.NoChannel {
+				if _,ok := r.(*struct{}); ok {
+					indexCloseCount += 1
+					if indexCloseCount >= len(self.channels) {
+						break
 					}
+					continue
 				}
-				done = true
-			case r := <-channels[channel].cx:
-				m := r.(Metadata)
+			}
+
+			m := r.(Metadata)
+			origin := m.GetOrigin()
+			pair := m.GetPair()
+			index := s3t.Count
+			timestamp := m.GetTimestamp() // usec
+
+			if channel != exchange.NoChannel {
+				s3t.Exchanges[int32(origin)] += 1
+				s3t.Pairs[pair.AsInt()] += 1
 				s3t.Count += 1
-				s3t.Exchanges[int32(m.GetOrigin())] += 1
-				s3t.Pairs[m.GetPair().AsInt()] += 1
 				if err := parq.writer.Write(r); err != nil {
 					logger.Fatal(err.Error())
 				}
+				ci <- &indexRecord{
+					record{origin, pair},
+					int32(channel),
+					index,
+					timestamp,
+				}
+			} else {
+				s3t.Exchanges[int32(origin)] = 1
+				s3t.Pairs[pair.AsInt()] = 1
+				ir := r.(*indexRecord)
+				minutes := (timestamp/1000000-s3t.StartedAt)/60 + 1
+				if timemark == nil {
+					timemark = make(map[int32]int64)
+				}
+				if minutes > timemark[ir.Channel] {
+					s3t.Count += 1
+					timemark[ir.Channel] = minutes
+					if err := parq.writer.Write(r); err != nil {
+						logger.Fatal(err.Error())
+					}
+				}
 			}
 		}
+
+		if channel != exchange.NoChannel {
+			ci <- &struct{}{}
+		}
+
+		s3t.EndedAt = time.Now().Unix()
+		e1 := parq.writer.WriteStop()
+		if err := parq.source.Close(); err == nil && e1 == nil {
+			_ = os.Rename(parq.tempName, parq.fileName)
+			if err := S3tWrite(parq.fileName, s3t); err != nil {
+				logger.Errorf("failed to write metadata: %v", err.Error())
+			} else {
+				Upload(parq.fileName, cfg)
+			}
+		}
+
+		logger.Infof("writer finished: %s\n", parq.fileName)
 	}
-	if parq != nil {
-		logger.Infof("parquet done: %s\n", parq.fileName)
-	}
-	waitGroup.Done()
+
+	self.WaitGroup.Done()
 }
 
-func closeStore() {
-	for _, v := range channels {
-		if v.close != nil {
-			v.close <- struct{}{}
+func (self *Channels) Close(wait bool) {
+
+	for _, v := range self.channels {
+		if v.cx != nil {
+			close(v.cx)
+			v.cx = nil
 		}
 	}
-	waitGroup.Wait()
+
+	if wait {
+		self.WaitGroup.Wait()
+	}
 }
 
-func openStore(cfg *Config) {
-	closeStore()
+func (self *Channels) Open(cfg *Config) {
 	t := time.Now()
-	for c, _ := range channels {
-		waitGroup.Add(1)
-		go worker1(c, t, cfg)
+	ci := make(chan interface{}, indexChannelLength)
+	for c, v := range self.channels {
+		cr := make(chan interface{}, channelLength)
+		v.cx = cr
+		self.WaitGroup.Add(1)
+		go self.worker(c, v.df, cr, ci, t, cfg)
 	}
+	self.WaitGroup.Add(1)
+	go self.worker(exchange.NoChannel, &indexRecord{}, ci, nil, t, cfg)
 }
 
-func reopenStore(cfg *Config) {
-	for _, v := range channels {
-		if v.close != nil {
-			v.close <- struct{}{}
-		}
-	}
-	t := time.Now()
-	for c, _ := range channels {
-		waitGroup.Add(1)
-		go worker1(c, t, cfg)
-	}
+type Writer struct {
+	*Config
+	cClose chan struct{}
+	done sync.WaitGroup
 }
 
-var writerClose chan struct{}
-var writerDone sync.WaitGroup
+func (self *Writer) worker() {
 
-func Writer(cfg *Config) {
+	var ch = Channels{
+		map[exchange.Channel]*channelDef{
+			exchange.Trade: &channelDef{
+				&tradeRecord{},
+				nil,
+			},
+			exchange.Candlestick: &channelDef{
+				&candleRecord{},
+				nil,
+			},
+			exchange.Depth: &channelDef{
+				&depthRecord{},
+				nil,
+			},
+		},
+		sync.WaitGroup{},
+	}
+
 	var ticker *time.Ticker
-	if times := cfg.S3.Times; times != 0 {
+	if times := self.Config.S3.Times; times != 0 {
 		ticker = time.NewTicker(time.Duration(times) * time.Minute)
 	} else {
 		ticker = time.NewTicker(8 * time.Hour)
 	}
 	defer ticker.Stop()
 
-	writerClose = make(chan struct{})
-	openStore(cfg)
+	self.cClose = make(chan struct{})
+	ch.Open(self.Config)
+
 	for {
 		select {
 		case <-ticker.C:
-			reopenStore(cfg)
-		case <-writerClose:
-			closeStore()
-			close(writerClose)
-			writerDone.Done()
+			ch.Close(false)
+			ch.Open(self.Config)
+		case <-self.cClose:
+			ch.Close(true)
+			self.done.Done()
 			return
 		case e := <-exchange.Collector.Messages:
 			//logger.Infof("msg: %#v",e)
 			switch msg := e.(type) {
 			case *message.Trade:
-				channels[exchange.Trade].cx <- &tradeRecord{
+				ch.channels[exchange.Trade].cx <- &tradeRecord{
 					record:    record{msg.Origin,msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
@@ -297,7 +382,7 @@ func Writer(cfg *Config) {
 					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
 				}
 			case *message.Candlestick:
-				channels[exchange.Candlestick].cx <- &candleRecord{
+				ch.channels[exchange.Candlestick].cx <- &candleRecord{
 					record:    record{msg.Origin,msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
@@ -312,7 +397,6 @@ func Writer(cfg *Config) {
 					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
 				}
 			case *message.Depth:
-				//fmt.Println("%#v",msg)
 				r := &depthRecord{
 					record:    record{msg.Origin,msg.Pair},
 					Origin:    msg.Origin.String(),
@@ -348,28 +432,32 @@ func Writer(cfg *Config) {
 						break
 					}
 				}
-				channels[exchange.Depth].cx <- r
+				ch.channels[exchange.Depth].cx <- r
 			}
 		}
 	}
 }
 
-func StartWriter(cfg *Config) error {
-	if dirname, err := cacheDir(cfg); err != nil {
+func (self *Writer) Start() error {
+
+	if dirname, err := cacheDir(self.Config); err != nil {
 		return err
 	} else {
 		cacheDirname = *dirname
 	}
 
-	writerDone.Add(1)
-	go Writer(cfg)
+	self.done.Add(1)
+	go self.worker()
 	return nil
 }
 
-func StopWriter() {
-	writerClose <- struct{}{}
-	logger.Info("waiting for writers\n")
-	writerDone.Wait()
+func (self *Writer) Stop() {
+
+	close(self.cClose)
+	//logger.Info("waiting for writers\n")
+
+	self.done.Wait()
 	logger.Info("all writers finished\n")
+
 	WaitForUploads()
 }

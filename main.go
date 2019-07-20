@@ -6,7 +6,6 @@ import (
 	"github.com/sudachen/coin-exchange/exchange"
 	"github.com/sudachen/coin-exchange/exchange/apifactory"
 	"github.com/sudachen/coin-logger/internal"
-	"sync"
 	"time"
 )
 
@@ -33,7 +32,9 @@ func main() {
 		}
 	}
 
-	if err := internal.StartWriter(cfg); err != nil {
+	wr := &internal.Writer{Config: cfg}
+
+	if err := wr.Start(); err != nil {
 		logger.Fatal(err.Error())
 	}
 
@@ -41,13 +42,8 @@ func main() {
 	internal.WaitForCtrlC()
 	logger.Info("stopping...")
 
-	wg := sync.WaitGroup{}
-	for _, ex := range cfg.Exchanges {
-		apifactory.Get(ex).UnsubscribeAll(time.Second * 5, &wg)
-	}
-	wg.Wait()
-
-	internal.StopWriter()
+	apifactory.UnsubscribeAll(5*time.Second)
+	wr.Stop()
 
 	logger.Rinfo("stopped successful")
 	logger.Info("exited")

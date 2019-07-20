@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-const VersionString = "9"
+const VersionString = "13"
 
 var s3group = sync.WaitGroup{}
 
@@ -53,6 +53,8 @@ func S3channelName(channel exchange.Channel) string {
 		return "trade"
 	case exchange.Depth:
 		return "depth"
+	case exchange.NoChannel:
+		return "index"
 	default:
 		return fmt.Sprintf("channel-%d", channel)
 	}
@@ -62,27 +64,29 @@ func makeKey(name string, s3t *S3Tags, cfg *Config) string {
 	ext := path.Ext(name)
 	dt := time.Unix(s3t.StartedAt, 0).UTC()
 	_, week := dt.ISOWeek()
-	return fmt.Sprintf("%s%04d%02d.%02d.%s/%d-%04d%02d%02dT%02d%02d%02d%s",
+	return fmt.Sprintf("%s%04d%02d.%02d.%s/%04d%02d%02dT%02d%02d%02d-%d%s",
 		cfg.S3.Prefix,
 		dt.Year(),
 		dt.Month(),
 		week,
 		VersionString,
 		//
-		s3t.ChannelNo,
 		dt.Year(),
 		dt.Month(),
 		dt.Day(),
 		dt.Hour(),
 		dt.Minute(),
 		dt.Second(),
+		s3t.ChannelNo,
 		ext)
 }
 
 func mapKeys(m map[int32]int32, cv func(int32)string) map[string]int32 {
 	r := make(map[string]int32)
 	for k, n := range m {
-		r[cv(k)] = n
+		if n != 0 {
+			r[cv(k)] = n
+		}
 	}
 	return r
 }
@@ -132,7 +136,7 @@ func s3worker(name string, cfg *Config) {
 		if f, s3t, err := s3open(name); err != nil {
 			logger.Errorf("can't open file %v: %v", name, err.Error())
 		} else {
-			logger.Infof("s3 upload started: %v", name)
+			//logger.Infof("s3 upload started: %v", name)
 			endpoint := cfg.S3.Endpoint
 			region := cfg.S3.Region
 			sess := session.Must(session.NewSession(&aws.Config{
@@ -179,7 +183,7 @@ func s3worker(name string, cfg *Config) {
 			if err != nil {
 				logger.Errorf("s3 upload failed: %v", err.Error())
 			} else {
-				logger.Infof("s3 upload finished: %v", name)
+				logger.Infof("s3 uploaded: %v", name)
 				_ = os.Remove(name)
 				_ = os.Remove(S3tName(name))
 			}
@@ -189,7 +193,7 @@ func s3worker(name string, cfg *Config) {
 }
 
 func WaitForUploads() {
-	logger.Info("waiting for uploads")
+	//logger.Info("waiting for uploads")
 	s3group.Wait()
 	logger.Info("all uploads finished")
 }
