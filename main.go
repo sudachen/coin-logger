@@ -42,7 +42,7 @@ func main() {
 	internal.WaitForCtrlC()
 	logger.Info("stopping...")
 
-	apifactory.UnsubscribeAll(5*time.Second)
+	apifactory.UnsubscribeAll(5 * time.Second)
 	wr.Stop()
 
 	logger.Rinfo("stopped successful")

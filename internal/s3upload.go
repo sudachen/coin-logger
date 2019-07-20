@@ -81,7 +81,7 @@ func makeKey(name string, s3t *S3Tags, cfg *Config) string {
 		ext)
 }
 
-func mapKeys(m map[int32]int32, cv func(int32)string) map[string]int32 {
+func mapKeys(m map[int32]int32, cv func(int32) string) map[string]int32 {
 	r := make(map[string]int32)
 	for k, n := range m {
 		if n != 0 {
@@ -91,7 +91,7 @@ func mapKeys(m map[int32]int32, cv func(int32)string) map[string]int32 {
 	return r
 }
 
-func joinKeys(m map[int32]int32, cv func(int32)string) string {
+func joinKeys(m map[int32]int32, cv func(int32) string) string {
 	keys := make([]string, 0, len(m))
 	for k, n := range m {
 		if n != 0 {
@@ -148,19 +148,19 @@ func s3worker(name string, cfg *Config) {
 			startedAt := time.Unix(s3t.StartedAt, 0).UTC().String()
 			endedAt := time.Unix(s3t.EndedAt, 0).UTC().String()
 			count := fmt.Sprint(s3t.Count)
-			exchanges := joinKeys(s3t.Exchanges, func(e int32)string{return exchange.Exchange(e).String()})
-			pairs := joinKeys(s3t.Pairs, func(p int32)string{return (&exchange.CoinPair{}).FromInt(p).String()})
+			exchanges := joinKeys(s3t.Exchanges, func(e int32) string { return exchange.Exchange(e).String() })
+			pairs := joinKeys(s3t.Pairs, func(p int32) string { return (&exchange.CoinPair{}).FromInt(p).String() })
 			key := makeKey(name, s3t, cfg)
 			version := VersionString
 			channel := S3channelName(exchange.Channel(s3t.ChannelNo))
 
 			bs, _ := json.Marshal(&S3Meta{
 				StartedAt: startedAt,
-				EndedAt: endedAt,
-				Exchanges: mapKeys(s3t.Exchanges, func(e int32)string{return exchange.Exchange(e).String()}),
-				Pairs: mapKeys(s3t.Pairs, func(p int32)string{return (&exchange.CoinPair{}).FromInt(p).String()}),
-				Channel: channel,
-				Count: s3t.Count,
+				EndedAt:   endedAt,
+				Exchanges: mapKeys(s3t.Exchanges, func(e int32) string { return exchange.Exchange(e).String() }),
+				Pairs:     mapKeys(s3t.Pairs, func(p int32) string { return (&exchange.CoinPair{}).FromInt(p).String() }),
+				Channel:   channel,
+				Count:     s3t.Count,
 			})
 			detail := string(bs)
 
@@ -176,7 +176,7 @@ func s3worker(name string, cfg *Config) {
 					"pairs":      &pairs,
 					"channel":    &channel,
 					"version":    &version,
-					"z-detail":	  &detail,
+					"z-detail":   &detail,
 				},
 			})
 

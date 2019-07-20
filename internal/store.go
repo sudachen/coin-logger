@@ -15,11 +15,12 @@ import (
 )
 
 const depthLength = 3
+
 var cacheDirname string
 
 type channelDef struct {
-	df    interface{}
-	cx    chan interface{}
+	df interface{}
+	cx chan interface{}
 }
 
 type parq struct {
@@ -31,7 +32,7 @@ type parq struct {
 }
 
 const channelLength = 31
-const indexChannelLength = channelLength*3/2
+const indexChannelLength = channelLength * 3 / 2
 
 type Metadata interface {
 	GetOrigin() exchange.Exchange
@@ -46,9 +47,9 @@ type record struct {
 
 type indexRecord struct {
 	record
-	Channel   int32   `parquet:"name=channel, type=INT32"`
-	Index	  int32   `parquet:"name=index, type=INT32"`
-	Timestamp int64   `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
+	Channel   int32 `parquet:"name=channel, type=INT32"`
+	Index     int32 `parquet:"name=index, type=INT32"`
+	Timestamp int64 `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
 }
 
 func (r *indexRecord) GetOrigin() exchange.Exchange {
@@ -223,11 +224,13 @@ func (self *Channels) worker(channel exchange.Channel, df interface{}, cr chan i
 
 		for {
 
-			r,ok := <-cr
-			if !ok {break}
+			r, ok := <-cr
+			if !ok {
+				break
+			}
 
 			if channel == exchange.NoChannel {
-				if _,ok := r.(*struct{}); ok {
+				if _, ok := r.(*struct{}); ok {
 					indexCloseCount += 1
 					if indexCloseCount >= len(self.channels) {
 						break
@@ -324,7 +327,7 @@ func (self *Channels) Open(cfg *Config) {
 type Writer struct {
 	*Config
 	cClose chan struct{}
-	done sync.WaitGroup
+	done   sync.WaitGroup
 }
 
 func (self *Writer) worker() {
@@ -372,7 +375,7 @@ func (self *Writer) worker() {
 			switch msg := e.(type) {
 			case *message.Trade:
 				ch.channels[exchange.Trade].cx <- &tradeRecord{
-					record:    record{msg.Origin,msg.Pair},
+					record:    record{msg.Origin, msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
 					Coin2:     msg.Pair[1].String(),
@@ -383,7 +386,7 @@ func (self *Writer) worker() {
 				}
 			case *message.Candlestick:
 				ch.channels[exchange.Candlestick].cx <- &candleRecord{
-					record:    record{msg.Origin,msg.Pair},
+					record:    record{msg.Origin, msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
 					Coin2:     msg.Pair[1].String(),
@@ -398,7 +401,7 @@ func (self *Writer) worker() {
 				}
 			case *message.Depth:
 				r := &depthRecord{
-					record:    record{msg.Origin,msg.Pair},
+					record:    record{msg.Origin, msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
 					Coin2:     msg.Pair[1].String(),
