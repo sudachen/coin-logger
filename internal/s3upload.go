@@ -117,10 +117,13 @@ func s3open(name string) (io.Reader, *S3Tags, error) {
 
 func S3Channel(c int32) string {
 	ch := channel.Channel(c)
-	switch (ch) {
-	case ChIndex: return "Index"
-	case ChSnapshot: return "Snapshot"
-	default: return ch.String()
+	switch ch {
+	case ChIndex:
+		return "Index"
+	case ChSnapshot:
+		return "Snapshot"
+	default:
+		return ch.String()
 	}
 }
 

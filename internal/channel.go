@@ -8,5 +8,3 @@ const (
 	ChIndex    channel.Channel = channel.NoChannel
 	ChSnapshot channel.Channel = channel.AnotherChannel
 )
-
-

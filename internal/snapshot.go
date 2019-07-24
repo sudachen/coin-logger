@@ -31,7 +31,11 @@ func (sn *Snapshots) Stop(timeout time.Duration, wg *sync.WaitGroup) {
 	go func() { sn.done.Wait(); close(c) }()
 
 	f := func() {
-		defer func() {if wg!= nil {wg.Done()} } ()
+		defer func() {
+			if wg != nil {
+				wg.Done()
+			}
+		}()
 		for {
 			select {
 			case <-sn.cClose:
@@ -83,13 +87,14 @@ func stringify(ex exchange.Exchange, pairs []exchange.CoinPair) string {
 }
 
 func (sn *Snapshots) worker(ex exchange.Exchange, pairs []exchange.CoinPair) {
-	ticker := time.NewTicker(10*time.Minute)
+	ticker := time.NewTicker(10 * time.Minute)
 	//ticker := time.NewTicker(10*time.Second)
 	pairs = apifactory.Get(ex).FilterSupported(pairs)
 	name := stringify(ex, pairs)
-	logger.Infof("snapshoter started %v",name)
+	logger.Infof("snapshoter started %v", name)
 
-	loop:for {
+loop:
+	for {
 		select {
 		case <-sn.cClose:
 			ticker.Stop()
@@ -97,7 +102,8 @@ func (sn *Snapshots) worker(ex exchange.Exchange, pairs []exchange.CoinPair) {
 		case <-ticker.C:
 			sn.done.Add(1)
 			go func() {
-				pair_loop:for _, pair := range pairs {
+			pair_loop:
+				for _, pair := range pairs {
 					select {
 					case <-sn.cClose:
 						break pair_loop
@@ -177,6 +183,6 @@ func (sn *Snapshots) worker(ex exchange.Exchange, pairs []exchange.CoinPair) {
 		}
 	}
 
-	logger.Infof("snapshoter stopped %v",name)
+	logger.Infof("snapshoter stopped %v", name)
 	sn.done.Done()
 }

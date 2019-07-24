@@ -141,7 +141,7 @@ func (r *depthRecord) GetPair() exchange.CoinPair {
 }
 
 type Kline struct {
-	Count     int32		`parquet:"name=count, type=INT32"`
+	Count     int32     `parquet:"name=count, type=INT32"`
 	Interval  []int32   `parquet:"name=interval, type=LIST, valuetype=INT32, repetitiontype=REQUIRED"`
 	Open      []float32 `parquet:"name=open, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 	Close     []float32 `parquet:"name=close, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
@@ -154,15 +154,15 @@ type Kline struct {
 func (k *snapRecord) fill1(src []message.Kline) {
 	count := len(src)
 	//k.Kl1Interval = make ([]int32,count)
-	k.Kl1Timestamp = make ([]int64,count)
-	k.Kl1Open = make ([]float32,count)
-	k.Kl1Close = make ([]float32,count)
-	k.Kl1High = make ([]float32,count)
-	k.Kl1Low = make ([]float32,count)
-	k.Kl1Volume = make ([]float32,count)
-	for i,v := range src {
+	k.Kl1Timestamp = make([]int64, count)
+	k.Kl1Open = make([]float32, count)
+	k.Kl1Close = make([]float32, count)
+	k.Kl1High = make([]float32, count)
+	k.Kl1Low = make([]float32, count)
+	k.Kl1Volume = make([]float32, count)
+	for i, v := range src {
 		//k.Kl1Interval[i] = v.Interval
-		k.Kl1Timestamp[i] = v.Timestamp.UTC().UnixNano()/1000
+		k.Kl1Timestamp[i] = v.Timestamp.UTC().UnixNano() / 1000
 		k.Kl1Open[i] = v.Open
 		k.Kl1Close[i] = v.Close
 		k.Kl1Low[i] = v.Low
@@ -174,15 +174,15 @@ func (k *snapRecord) fill1(src []message.Kline) {
 func (k *snapRecord) fill10(src []message.Kline) {
 	count := len(src)
 	//k.Kl10Interval = make ([]int32,count)
-	k.Kl10Timestamp = make ([]int64,count)
-	k.Kl10Open = make ([]float32,count)
-	k.Kl10Close = make ([]float32,count)
-	k.Kl10High = make ([]float32,count)
-	k.Kl10Low = make ([]float32,count)
-	k.Kl10Volume = make ([]float32,count)
-	for i,v := range src {
+	k.Kl10Timestamp = make([]int64, count)
+	k.Kl10Open = make([]float32, count)
+	k.Kl10Close = make([]float32, count)
+	k.Kl10High = make([]float32, count)
+	k.Kl10Low = make([]float32, count)
+	k.Kl10Volume = make([]float32, count)
+	for i, v := range src {
 		//k.Kl10Interval[i] = v.Interval
-		k.Kl10Timestamp[i] = v.Timestamp.UTC().UnixNano()/1000
+		k.Kl10Timestamp[i] = v.Timestamp.UTC().UnixNano() / 1000
 		k.Kl10Open[i] = v.Open
 		k.Kl10Close[i] = v.Close
 		k.Kl10Low[i] = v.Low
@@ -194,15 +194,15 @@ func (k *snapRecord) fill10(src []message.Kline) {
 func (k *snapRecord) fill60(src []message.Kline) {
 	count := len(src)
 	//k.Kl60Interval = make ([]int32,count)
-	k.Kl60Timestamp = make ([]int64,count)
-	k.Kl60Open = make ([]float32,count)
-	k.Kl60Close = make ([]float32,count)
-	k.Kl60High = make ([]float32,count)
-	k.Kl60Low = make ([]float32,count)
-	k.Kl60Volume = make ([]float32,count)
-	for i,v := range src {
+	k.Kl60Timestamp = make([]int64, count)
+	k.Kl60Open = make([]float32, count)
+	k.Kl60Close = make([]float32, count)
+	k.Kl60High = make([]float32, count)
+	k.Kl60Low = make([]float32, count)
+	k.Kl60Volume = make([]float32, count)
+	for i, v := range src {
 		//k.Kl60Interval[i] = v.Interval
-		k.Kl60Timestamp[i] = v.Timestamp.UTC().UnixNano()/1000
+		k.Kl60Timestamp[i] = v.Timestamp.UTC().UnixNano() / 1000
 		k.Kl60Open[i] = v.Open
 		k.Kl60Close[i] = v.Close
 		k.Kl60Low[i] = v.Low
@@ -218,18 +218,18 @@ type snapRecord struct {
 	Coin2     string `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Timestamp int64  `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
 
-	BidsPrice 	  []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	BidsQty       []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksPrice     []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	AsksQty       []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	BidsPrice []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	BidsQty   []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksPrice []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksQty   []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 
 	//Kl1Interval   []int32   `parquet:"name=kl1_interval, type=LIST, valuetype=INT32, repetitiontype=REQUIRED"`
-	Kl1Open       []float32 `parquet:"name=kl1_open, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	Kl1Close      []float32 `parquet:"name=kl1_close, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	Kl1High       []float32 `parquet:"name=kl1_high, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	Kl1Low        []float32 `parquet:"name=kl1_low, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	Kl1Volume     []float32 `parquet:"name=kl1_volume, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	Kl1Timestamp  []int64   `parquet:"name=kl1_timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
+	Kl1Open      []float32 `parquet:"name=kl1_open, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1Close     []float32 `parquet:"name=kl1_close, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1High      []float32 `parquet:"name=kl1_high, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1Low       []float32 `parquet:"name=kl1_low, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1Volume    []float32 `parquet:"name=kl1_volume, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1Timestamp []int64   `parquet:"name=kl1_timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
 
 	//Kl10Interval  []int32   `parquet:"name=kl10_interval, type=LIST, valuetype=INT32, repetitiontype=REQUIRED"`
 	Kl10Open      []float32 `parquet:"name=kl10_open, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
@@ -247,9 +247,9 @@ type snapRecord struct {
 	Kl60Volume    []float32 `parquet:"name=kl60_volume, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 	Kl60Timestamp []int64   `parquet:"name=kl60_timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
 
-	TdPrice       []float32 `parquet:"name=td_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	TdQty         []float32 `parquet:"name=td_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
-	TdTimestamp   []int64   `parquet:"name=td_timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
+	TdPrice     []float32 `parquet:"name=td_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	TdQty       []float32 `parquet:"name=td_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	TdTimestamp []int64   `parquet:"name=td_timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
 }
 
 func (r *snapRecord) GetTimestamp() int64 {
@@ -557,17 +557,17 @@ func (self *Writer) worker() {
 
 			case *SnapshotMsg:
 				r := &snapRecord{
-					record: record{msg.Origin, msg.Pair},
-					Origin:    msg.Origin.String(),
-					Coin1:     msg.Pair[0].String(),
-					Coin2:     msg.Pair[1].String(),
-					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
-					BidsPrice: make([]float32, len(msg.Bids)),
-					BidsQty:   make([]float32, len(msg.Bids)),
-					AsksPrice: make([]float32, len(msg.Asks)),
-					AsksQty:   make([]float32, len(msg.Asks)),
-					TdPrice:   make([]float32, len(msg.Trades)),
-					TdQty:     make([]float32, len(msg.Trades)),
+					record:      record{msg.Origin, msg.Pair},
+					Origin:      msg.Origin.String(),
+					Coin1:       msg.Pair[0].String(),
+					Coin2:       msg.Pair[1].String(),
+					Timestamp:   msg.Timestamp.UTC().UnixNano() / 1000,
+					BidsPrice:   make([]float32, len(msg.Bids)),
+					BidsQty:     make([]float32, len(msg.Bids)),
+					AsksPrice:   make([]float32, len(msg.Asks)),
+					AsksQty:     make([]float32, len(msg.Asks)),
+					TdPrice:     make([]float32, len(msg.Trades)),
+					TdQty:       make([]float32, len(msg.Trades)),
 					TdTimestamp: make([]int64, len(msg.Trades)),
 				}
 
@@ -586,7 +586,7 @@ func (self *Writer) worker() {
 				for i, v := range msg.Trades {
 					r.TdPrice[i] = v.Price
 					r.TdQty[i] = v.Qty
-					r.TdTimestamp[i] = v.Timestamp.UTC().UnixNano()/1000
+					r.TdTimestamp[i] = v.Timestamp.UTC().UnixNano() / 1000
 				}
 
 				//fmt.Println(r)
