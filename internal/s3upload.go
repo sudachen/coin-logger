@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/google/logger"
 	"github.com/sudachen/coin-exchange/exchange"
+	"github.com/sudachen/coin-exchange/exchange/channel"
 	"io"
 	"io/ioutil"
 	"os"
@@ -43,21 +44,6 @@ type S3Meta struct {
 func Upload(name string, cfg *Config) {
 	s3group.Add(1)
 	go s3worker(name, cfg)
-}
-
-func S3channelName(channel exchange.Channel) string {
-	switch channel {
-	case exchange.Candlestick:
-		return "candlestick"
-	case exchange.Trade:
-		return "trade"
-	case exchange.Depth:
-		return "depth"
-	case exchange.NoChannel:
-		return "index"
-	default:
-		return fmt.Sprintf("channel-%d", channel)
-	}
 }
 
 func makeKey(name string, s3t *S3Tags, cfg *Config) string {
@@ -129,6 +115,15 @@ func s3open(name string) (io.Reader, *S3Tags, error) {
 	}
 }
 
+func S3Channel(c int32) string {
+	ch := channel.Channel(c)
+	switch (ch) {
+	case ChIndex: return "Index"
+	case ChSnapshot: return "Snapshot"
+	default: return ch.String()
+	}
+}
+
 func s3worker(name string, cfg *Config) {
 	if cfg.S3.Endpoint == "" {
 		logger.Errorf("S3 endpoint is not specified, upload skipped")
@@ -152,14 +147,14 @@ func s3worker(name string, cfg *Config) {
 			pairs := joinKeys(s3t.Pairs, func(p int32) string { return (&exchange.CoinPair{}).FromInt(p).String() })
 			key := makeKey(name, s3t, cfg)
 			version := VersionString
-			channel := S3channelName(exchange.Channel(s3t.ChannelNo))
+			ch := S3Channel(s3t.ChannelNo)
 
 			bs, _ := json.Marshal(&S3Meta{
 				StartedAt: startedAt,
 				EndedAt:   endedAt,
 				Exchanges: mapKeys(s3t.Exchanges, func(e int32) string { return exchange.Exchange(e).String() }),
 				Pairs:     mapKeys(s3t.Pairs, func(p int32) string { return (&exchange.CoinPair{}).FromInt(p).String() }),
-				Channel:   channel,
+				Channel:   ch,
 				Count:     s3t.Count,
 			})
 			detail := string(bs)
@@ -174,7 +169,7 @@ func s3worker(name string, cfg *Config) {
 					"count":      &count,
 					"exchanges":  &exchanges,
 					"pairs":      &pairs,
-					"channel":    &channel,
+					"channel":    &ch,
 					"version":    &version,
 					"z-detail":   &detail,
 				},

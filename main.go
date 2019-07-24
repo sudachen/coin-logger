@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"github.com/google/logger"
-	"github.com/sudachen/coin-exchange/exchange"
 	"github.com/sudachen/coin-exchange/exchange/apifactory"
+	"github.com/sudachen/coin-exchange/exchange/channel"
 	"github.com/sudachen/coin-logger/internal"
+	"sync"
 	"time"
 )
 
@@ -24,16 +25,22 @@ func main() {
 
 	for _, ex := range cfg.Exchanges {
 		api := apifactory.Get(ex)
-		if err := api.Subscribe(cfg.Pairs, []exchange.Channel{exchange.Trade, exchange.Candlestick}); err != nil {
+		if err := api.Subscribe(cfg.Pairs, channel.Trade, channel.Candlestick); err != nil {
 			logger.Fatalf("failed to subscribe api %v", ex.String())
 		}
-		if err := api.Subscribe(cfg.Pairs, []exchange.Channel{exchange.Depth}); err != nil {
+		if err := api.Subscribe(cfg.Pairs, channel.Depth); err != nil {
 			logger.Fatalf("failed to subscribe api %v", ex.String())
 		}
 	}
 
-	wr := &internal.Writer{Config: cfg}
+	sn := &internal.Snapshots{Config: cfg}
+	for _, ex := range cfg.Exchanges {
+		if err := sn.Schedule(ex, cfg.Pairs); err != nil {
+			logger.Fatalf("failed to schedule snapshots on %v", ex.String())
+		}
+	}
 
+	wr := &internal.Writer{Config: cfg}
 	if err := wr.Start(); err != nil {
 		logger.Fatal(err.Error())
 	}
@@ -42,7 +49,10 @@ func main() {
 	internal.WaitForCtrlC()
 	logger.Info("stopping...")
 
-	apifactory.UnsubscribeAll(5 * time.Second)
+	wg := sync.WaitGroup{}
+	sn.Stop(5*time.Second, &wg)
+	apifactory.UnsubscribeAll(5*time.Second, &wg)
+	wg.Wait()
 	wr.Stop()
 
 	logger.Rinfo("stopped successful")

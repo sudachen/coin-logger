@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/google/logger"
 	"github.com/sudachen/coin-exchange/exchange"
+	"github.com/sudachen/coin-exchange/exchange/channel"
 	"github.com/sudachen/coin-exchange/exchange/message"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/source"
@@ -120,14 +121,7 @@ type depthRecord struct {
 	Coin1     string `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Coin2     string `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
 	Timestamp int64  `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
-	//BidsAvg    float32   `parquet:"name=bids_avg, type=FLOAT"`
-	//BidsMedian float32   `parquet:"name=bids_median, type=FLOAT"`
-	//BidsVolume float32   `parquet:"name=bids_volume, type=FLOAT"`
-	//BidsSum    float32   `parquet:"name=bids_sum, type=FLOAT"`
-	//AsksAvg    float32   `parquet:"name=asks_avg, type=FLOAT"`
-	//AsksMedian float32   `parquet:"name=asks_median, type=FLOAT"`
-	//AsksVolume float32   `parquet:"name=asks_volume, type=FLOAT"`
-	//AsksSum    float32   `parquet:"name=asks_sum, type=FLOAT"`
+
 	BidsPrice []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 	BidsQty   []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
 	AsksPrice []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
@@ -143,6 +137,130 @@ func (r *depthRecord) GetOrigin() exchange.Exchange {
 }
 
 func (r *depthRecord) GetPair() exchange.CoinPair {
+	return r.CoinPair
+}
+
+type Kline struct {
+	Count     int32		`parquet:"name=count, type=INT32"`
+	Interval  []int32   `parquet:"name=interval, type=LIST, valuetype=INT32, repetitiontype=REQUIRED"`
+	Open      []float32 `parquet:"name=open, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Close     []float32 `parquet:"name=close, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	High      []float32 `parquet:"name=high, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Low       []float32 `parquet:"name=low, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Volume    []float32 `parquet:"name=volume, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Timestamp []int64   `parquet:"name=timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
+}
+
+func (k *snapRecord) fill1(src []message.Kline) {
+	count := len(src)
+	//k.Kl1Interval = make ([]int32,count)
+	k.Kl1Timestamp = make ([]int64,count)
+	k.Kl1Open = make ([]float32,count)
+	k.Kl1Close = make ([]float32,count)
+	k.Kl1High = make ([]float32,count)
+	k.Kl1Low = make ([]float32,count)
+	k.Kl1Volume = make ([]float32,count)
+	for i,v := range src {
+		//k.Kl1Interval[i] = v.Interval
+		k.Kl1Timestamp[i] = v.Timestamp.UTC().UnixNano()/1000
+		k.Kl1Open[i] = v.Open
+		k.Kl1Close[i] = v.Close
+		k.Kl1Low[i] = v.Low
+		k.Kl1High[i] = v.High
+		k.Kl1Volume[i] = v.Volume
+	}
+}
+
+func (k *snapRecord) fill10(src []message.Kline) {
+	count := len(src)
+	//k.Kl10Interval = make ([]int32,count)
+	k.Kl10Timestamp = make ([]int64,count)
+	k.Kl10Open = make ([]float32,count)
+	k.Kl10Close = make ([]float32,count)
+	k.Kl10High = make ([]float32,count)
+	k.Kl10Low = make ([]float32,count)
+	k.Kl10Volume = make ([]float32,count)
+	for i,v := range src {
+		//k.Kl10Interval[i] = v.Interval
+		k.Kl10Timestamp[i] = v.Timestamp.UTC().UnixNano()/1000
+		k.Kl10Open[i] = v.Open
+		k.Kl10Close[i] = v.Close
+		k.Kl10Low[i] = v.Low
+		k.Kl10High[i] = v.High
+		k.Kl10Volume[i] = v.Volume
+	}
+}
+
+func (k *snapRecord) fill60(src []message.Kline) {
+	count := len(src)
+	//k.Kl60Interval = make ([]int32,count)
+	k.Kl60Timestamp = make ([]int64,count)
+	k.Kl60Open = make ([]float32,count)
+	k.Kl60Close = make ([]float32,count)
+	k.Kl60High = make ([]float32,count)
+	k.Kl60Low = make ([]float32,count)
+	k.Kl60Volume = make ([]float32,count)
+	for i,v := range src {
+		//k.Kl60Interval[i] = v.Interval
+		k.Kl60Timestamp[i] = v.Timestamp.UTC().UnixNano()/1000
+		k.Kl60Open[i] = v.Open
+		k.Kl60Close[i] = v.Close
+		k.Kl60Low[i] = v.Low
+		k.Kl60High[i] = v.High
+		k.Kl60Volume[i] = v.Volume
+	}
+}
+
+type snapRecord struct {
+	record
+	Origin    string `parquet:"name=origin, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin1     string `parquet:"name=coin1, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Coin2     string `parquet:"name=coin2, type=UTF8, encoding=PLAIN_DICTIONARY"`
+	Timestamp int64  `parquet:"name=timestamp, type=TIMESTAMP_MICROS"`
+
+	BidsPrice 	  []float32 `parquet:"name=bids_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	BidsQty       []float32 `parquet:"name=bids_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksPrice     []float32 `parquet:"name=asks_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	AsksQty       []float32 `parquet:"name=asks_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+
+	//Kl1Interval   []int32   `parquet:"name=kl1_interval, type=LIST, valuetype=INT32, repetitiontype=REQUIRED"`
+	Kl1Open       []float32 `parquet:"name=kl1_open, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1Close      []float32 `parquet:"name=kl1_close, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1High       []float32 `parquet:"name=kl1_high, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1Low        []float32 `parquet:"name=kl1_low, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1Volume     []float32 `parquet:"name=kl1_volume, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl1Timestamp  []int64   `parquet:"name=kl1_timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
+
+	//Kl10Interval  []int32   `parquet:"name=kl10_interval, type=LIST, valuetype=INT32, repetitiontype=REQUIRED"`
+	Kl10Open      []float32 `parquet:"name=kl10_open, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl10Close     []float32 `parquet:"name=kl10_close, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl10High      []float32 `parquet:"name=kl10_high, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl10Low       []float32 `parquet:"name=kl10_low, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl10Volume    []float32 `parquet:"name=kl10_volume, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl10Timestamp []int64   `parquet:"name=kl10_timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
+
+	//Kl60Interval  []int32   `parquet:"name=kl60_interval, type=LIST, valuetype=INT32, repetitiontype=REQUIRED"`
+	Kl60Open      []float32 `parquet:"name=kl60_open, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl60Close     []float32 `parquet:"name=kl60_close, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl60High      []float32 `parquet:"name=kl60_high, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl60Low       []float32 `parquet:"name=kl60_low, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl60Volume    []float32 `parquet:"name=kl60_volume, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	Kl60Timestamp []int64   `parquet:"name=kl60_timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
+
+	TdPrice       []float32 `parquet:"name=td_price, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	TdQty         []float32 `parquet:"name=td_qty, type=LIST, valuetype=FLOAT, repetitiontype=REQUIRED"`
+	TdTimestamp   []int64   `parquet:"name=td_timestamp, type=LIST, valuetype=TIMESTAMP_MICROS, repetitiontype=REQUIRED"`
+}
+
+func (r *snapRecord) GetTimestamp() int64 {
+	return r.Timestamp
+}
+
+func (r *snapRecord) GetOrigin() exchange.Exchange {
+	return r.Exchange
+}
+
+func (r *snapRecord) GetPair() exchange.CoinPair {
 	return r.CoinPair
 }
 
@@ -164,25 +282,25 @@ func cacheDir(cfg *Config) (*string, error) {
 	return &dirname, nil
 }
 
-func fileNameFromChannel(channel exchange.Channel, t time.Time) string {
+func fileNameFromChannel(ch channel.Channel, t time.Time) string {
 	utc := t.UTC()
 	f := fmt.Sprintf("%04d%02d%02dT%02d%02d%02d-%d.pqt",
 		utc.Year(), utc.Month(), utc.Day(),
 		utc.Hour(), utc.Minute(), utc.Second(),
-		channel)
+		ch)
 	if cacheDirname != "" {
 		f = path.Join(cacheDirname, f)
 	}
 	return f
 }
 
-func tempNameFromChannel(channel exchange.Channel, t time.Time) string {
-	return fileNameFromChannel(channel, t) + "~"
+func tempNameFromChannel(ch channel.Channel, t time.Time) string {
+	return fileNameFromChannel(ch, t) + "~"
 }
 
-func createOneParquet(channel exchange.Channel, df interface{}, startedAt time.Time, cfg *Config) (*parq, error) {
-	tempName := tempNameFromChannel(channel, startedAt)
-	fileName := fileNameFromChannel(channel, startedAt)
+func createOneParquet(ch channel.Channel, df interface{}, startedAt time.Time, cfg *Config) (*parq, error) {
+	tempName := tempNameFromChannel(ch, startedAt)
+	fileName := fileNameFromChannel(ch, startedAt)
 	if fw, err := local.NewLocalFileWriter(tempName); err != nil {
 		logger.Errorf("Can't create local file: %v", err)
 		return nil, err
@@ -198,13 +316,13 @@ func createOneParquet(channel exchange.Channel, df interface{}, startedAt time.T
 }
 
 type Channels struct {
-	channels map[exchange.Channel]*channelDef
+	channels map[channel.Channel]*channelDef
 	sync.WaitGroup
 }
 
-func (self *Channels) worker(channel exchange.Channel, df interface{}, cr chan interface{}, ci chan interface{}, startedAt time.Time, cfg *Config) {
+func (self *Channels) worker(ch channel.Channel, df interface{}, cr chan interface{}, ci chan interface{}, startedAt time.Time, cfg *Config) {
 
-	parq, err := createOneParquet(channel, df, startedAt, cfg)
+	parq, err := createOneParquet(ch, df, startedAt, cfg)
 	indexCloseCount := 0
 
 	if err != nil {
@@ -216,7 +334,7 @@ func (self *Channels) worker(channel exchange.Channel, df interface{}, cr chan i
 		s3t := &S3Tags{
 			Exchanges: make(map[int32]int32),
 			Pairs:     make(map[int32]int32),
-			ChannelNo: int32(channel),
+			ChannelNo: int32(ch),
 			StartedAt: startedAt.Unix(),
 		}
 
@@ -229,7 +347,7 @@ func (self *Channels) worker(channel exchange.Channel, df interface{}, cr chan i
 				break
 			}
 
-			if channel == exchange.NoChannel {
+			if ch == ChIndex {
 				if _, ok := r.(*struct{}); ok {
 					indexCloseCount += 1
 					if indexCloseCount >= len(self.channels) {
@@ -245,7 +363,7 @@ func (self *Channels) worker(channel exchange.Channel, df interface{}, cr chan i
 			index := s3t.Count
 			timestamp := m.GetTimestamp() // usec
 
-			if channel != exchange.NoChannel {
+			if ch != ChIndex {
 				s3t.Exchanges[int32(origin)] += 1
 				s3t.Pairs[pair.AsInt()] += 1
 				s3t.Count += 1
@@ -254,7 +372,7 @@ func (self *Channels) worker(channel exchange.Channel, df interface{}, cr chan i
 				}
 				ci <- &indexRecord{
 					record{origin, pair},
-					int32(channel),
+					int32(ch),
 					index,
 					timestamp,
 				}
@@ -276,7 +394,7 @@ func (self *Channels) worker(channel exchange.Channel, df interface{}, cr chan i
 			}
 		}
 
-		if channel != exchange.NoChannel {
+		if ch != ChIndex {
 			ci <- &struct{}{}
 		}
 
@@ -321,7 +439,7 @@ func (self *Channels) Open(cfg *Config) {
 		go self.worker(c, v.df, cr, ci, t, cfg)
 	}
 	self.WaitGroup.Add(1)
-	go self.worker(exchange.NoChannel, &indexRecord{}, ci, nil, t, cfg)
+	go self.worker(ChIndex, &indexRecord{}, ci, nil, t, cfg)
 }
 
 type Writer struct {
@@ -333,17 +451,21 @@ type Writer struct {
 func (self *Writer) worker() {
 
 	var ch = Channels{
-		map[exchange.Channel]*channelDef{
-			exchange.Trade: &channelDef{
+		map[channel.Channel]*channelDef{
+			channel.Trade: &channelDef{
 				&tradeRecord{},
 				nil,
 			},
-			exchange.Candlestick: &channelDef{
+			channel.Candlestick: &channelDef{
 				&candleRecord{},
 				nil,
 			},
-			exchange.Depth: &channelDef{
+			channel.Depth: &channelDef{
 				&depthRecord{},
+				nil,
+			},
+			ChSnapshot: &channelDef{
+				&snapRecord{},
 				nil,
 			},
 		},
@@ -366,26 +488,29 @@ func (self *Writer) worker() {
 		case <-ticker.C:
 			ch.Close(false)
 			ch.Open(self.Config)
+
 		case <-self.cClose:
 			ch.Close(true)
 			self.done.Done()
 			return
+
 		case e := <-exchange.Collector.Messages:
 			//logger.Infof("msg: %#v",e)
 			switch msg := e.(type) {
 			case *message.Trade:
-				ch.channels[exchange.Trade].cx <- &tradeRecord{
+				ch.channels[channel.Trade].cx <- &tradeRecord{
 					record:    record{msg.Origin, msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
 					Coin2:     msg.Pair[1].String(),
-					Price:     msg.Price,
-					Qty:       msg.Qty,
-					Sell:      msg.Sell,
-					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
+					Price:     msg.Value.Price,
+					Qty:       msg.Value.Qty,
+					Sell:      msg.Value.Sell,
+					Timestamp: msg.Value.Timestamp.UTC().UnixNano() / 1000,
 				}
+
 			case *message.Candlestick:
-				ch.channels[exchange.Candlestick].cx <- &candleRecord{
+				ch.channels[channel.Candlestick].cx <- &candleRecord{
 					record:    record{msg.Origin, msg.Pair},
 					Origin:    msg.Origin.String(),
 					Coin1:     msg.Pair[0].String(),
@@ -399,7 +524,8 @@ func (self *Writer) worker() {
 					Volume:    msg.Volume,
 					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
 				}
-			case *message.Depth:
+
+			case *message.Orders:
 				r := &depthRecord{
 					record:    record{msg.Origin, msg.Pair},
 					Origin:    msg.Origin.String(),
@@ -410,14 +536,6 @@ func (self *Writer) worker() {
 					BidsQty:   make([]float32, depthLength),
 					AsksPrice: make([]float32, depthLength),
 					AsksQty:   make([]float32, depthLength),
-					//BidsAvg:    msg.AggBids.Avg,
-					//BidsMedian: msg.AggBids.Median,
-					//BidsVolume: msg.AggBids.Volume,
-					//BidsSum:    msg.AggBids.Qty,
-					//AsksAvg:    msg.AggAsks.Avg,
-					//AsksMedian: msg.AggAsks.Median,
-					//AsksVolume: msg.AggAsks.Volume,
-					//AsksSum:    msg.AggAsks.Qty,
 				}
 				for i, v := range msg.Bids {
 					if i < depthLength {
@@ -435,7 +553,45 @@ func (self *Writer) worker() {
 						break
 					}
 				}
-				ch.channels[exchange.Depth].cx <- r
+				ch.channels[channel.Depth].cx <- r
+
+			case *SnapshotMsg:
+				r := &snapRecord{
+					record: record{msg.Origin, msg.Pair},
+					Origin:    msg.Origin.String(),
+					Coin1:     msg.Pair[0].String(),
+					Coin2:     msg.Pair[1].String(),
+					Timestamp: msg.Timestamp.UTC().UnixNano() / 1000,
+					BidsPrice: make([]float32, len(msg.Bids)),
+					BidsQty:   make([]float32, len(msg.Bids)),
+					AsksPrice: make([]float32, len(msg.Asks)),
+					AsksQty:   make([]float32, len(msg.Asks)),
+					TdPrice:   make([]float32, len(msg.Trades)),
+					TdQty:     make([]float32, len(msg.Trades)),
+					TdTimestamp: make([]int64, len(msg.Trades)),
+				}
+
+				r.fill1(msg.Candles1)
+				r.fill10(msg.Candles10)
+				r.fill60(msg.Candles60)
+
+				for i, v := range msg.Bids {
+					r.BidsPrice[i] = v.Price
+					r.BidsQty[i] = v.Qty
+				}
+				for i, v := range msg.Asks {
+					r.AsksPrice[i] = v.Price
+					r.AsksQty[i] = v.Qty
+				}
+				for i, v := range msg.Trades {
+					r.TdPrice[i] = v.Price
+					r.TdQty[i] = v.Qty
+					r.TdTimestamp[i] = v.Timestamp.UTC().UnixNano()/1000
+				}
+
+				//fmt.Println(r)
+
+				ch.channels[ChSnapshot].cx <- r
 			}
 		}
 	}
